@@ -12,6 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/customers', require('./routes/customerRoutes')); 
 // Health check route
 app.get('/', (req, res) => {
   res.json({ message: 'SynapseCRM API is running' });
