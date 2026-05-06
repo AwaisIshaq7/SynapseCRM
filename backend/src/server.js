@@ -11,10 +11,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+//allRouteesss
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/customers', require('./routes/customerRoutes'));
 app.use('/api/customers/:id/interactions', require('./routes/interactionRoutes'));
 app.use('/api/interactions', require('./routes/standaloneInteractionRoutes'));
+app.use('/api/dashboard', require('./routes/dashboardRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
 // Health check route
 app.get('/', (req, res) => {
   res.json({ message: 'SynapseCRM API is running' });
