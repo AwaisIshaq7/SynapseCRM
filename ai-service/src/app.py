@@ -1,13 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sys
-import os
-
-# Add src directory to path so imports work
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
-from sentiment import analyze_sentiment
-from churn import calculate_churn_risk
+from src.sentiment import analyze_sentiment
+from src.churn import calculate_churn_risk
 
 app = Flask(__name__)
 CORS(app)  # Allow requests from Node.js backend
