@@ -18,6 +18,7 @@ app.use('/api/customers/:id/interactions', require('./routes/interactionRoutes')
 app.use('/api/interactions', require('./routes/standaloneInteractionRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/rag', require('./routes/ragRoutes')); 
 // Health check route
 app.get('/', (req, res) => {
   res.json({ message: 'SynapseCRM API is running' });
