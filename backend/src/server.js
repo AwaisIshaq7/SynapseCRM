@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const { startChurnRefresh } = require('./utils/churnRefresh');
 
 dotenv.config();
 
@@ -44,6 +45,7 @@ const connectionOptions = {
 mongoose.connect(process.env.MONGO_URI, connectionOptions)
   .then(() => {
     console.log('✅ MongoDB connected');
+      startChurnRefresh();
     console.log(`📊 Database: ${mongoose.connection.name}`);
     console.log(`🖥️  Host: ${mongoose.connection.host}:${mongoose.connection.port}`);
     
