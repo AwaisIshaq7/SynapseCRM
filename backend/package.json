@@ -8,7 +8,6 @@
     "dev": "nodemon src/server.js",
     "test": "jest --testEnvironment node --forceExit --detectOpenHandles"
   },
-  
   "jest": {
     "testEnvironment": "node",
     "testMatch": ["**/__tests__/**/*.test.js"]
