@@ -2,23 +2,26 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import LoadingSpinner from './components/LoadingSpinner'
 import ProtectedRoute from './components/ProtectedRoute'
+import LoginPage    from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
 
-// Pages
-import LoginPage          from './pages/LoginPage'
-import RegisterPage       from './pages/RegisterPage'
-import DashboardPage      from './pages/DashboardPage'
-import CustomerListPage   from './pages/CustomerListPage'
-import CustomerDetailPage from './pages/CustomerDetailPage'
-import CustomerFormPage   from './pages/CustomerFormPage'
-import ReportsPage        from './pages/ReportsPage'
-import UserManagementPage from './pages/UserManagementPage'
-import SettingsPage       from './pages/SettingsPage'
-import NotFoundPage       from './pages/NotFoundPage'
+// ─── Placeholder for pages not yet built ────────────────────
+// Remove each placeholder as you build the real page
+function ComingSoon({ name }) {
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <p className="text-4xl mb-3">🚧</p>
+        <p className="text-lg font-semibold text-gray-700 dark:text-gray-300">{name}</p>
+        <p className="text-sm text-gray-400 mt-1">Coming soon — Week 3+</p>
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
   const { loading, user } = useAuth()
 
-  // Show full-screen spinner while verifying JWT
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -44,33 +47,25 @@ export default function App() {
         element={user ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
       />
 
-      {/* Protected routes — require authentication */}
+      {/* Protected routes */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard"           element={<DashboardPage />} />
-        <Route path="/customers"           element={<CustomerListPage />} />
-        <Route path="/customers/new"       element={<CustomerFormPage />} />
-        <Route path="/customers/:id"       element={<CustomerDetailPage />} />
-        <Route path="/customers/:id/edit"  element={<CustomerFormPage />} />
-        <Route path="/reports"             element={<ReportsPage />} />
-        <Route path="/settings"            element={<SettingsPage />} />
-
-        {/* Admin-only route */}
-        <Route
-          path="/users"
-          element={<ProtectedRoute adminOnly />}
-        >
-          <Route index element={<UserManagementPage />} />
-        </Route>
+        <Route path="/dashboard"  element={<ComingSoon name="Dashboard" />} />
+        <Route path="/customers"  element={<ComingSoon name="Customers" />} />
+        <Route path="/reports"    element={<ComingSoon name="Reports" />} />
+        <Route path="/settings"   element={<ComingSoon name="Settings" />} />
+        <Route path="/users"      element={<ComingSoon name="User Management" />} />
       </Route>
 
-      {/* Root redirect */}
-      <Route
-        path="/"
-        element={<Navigate to={user ? '/dashboard' : '/login'} replace />}
-      />
-
-      {/* 404 */}
-      <Route path="*" element={<NotFoundPage />} />
+      {/* Redirects */}
+      <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />
+      <Route path="*" element={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p className="text-6xl font-bold text-brand-600">404</p>
+            <p className="mt-2 text-gray-500">Page not found</p>
+          </div>
+        </div>
+      } />
     </Routes>
   )
 }
