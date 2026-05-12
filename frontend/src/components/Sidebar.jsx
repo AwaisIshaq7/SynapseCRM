@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuth } from '../hooks/useAuth'
+import LogoIcon from './LogoIcon'
 
 const NAV_ITEMS = [
   {
@@ -85,19 +86,22 @@ export default function Sidebar() {
       role="navigation"
       aria-label="Main navigation"
     >
-      {/* Logo */}
-      <div className="flex h-16 items-center border-b border-slate-200/70 px-6 dark:border-slate-700/70">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 shadow-[0_12px_24px_-12px_rgba(37,99,235,0.75)]">
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
-          <div>
-            <p className="text-sm font-bold leading-tight text-slate-900 dark:text-white">SynapseCRM</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">AI-Driven CRM</p>
-          </div>
-        </div>
-      </div>
+     {/* Logo */}
+<div className="flex h-18 items-center gap: 1px] border-b border-slate-100/70 px-10 dark:border-slate-700/70">
+  <div className="mt-1">
+  <LogoIcon size={102} decorative={false} className="mt-9" />
+</div>
 
+  <div className="flex flex-col">
+    <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+      SynapseCRM
+    </h1>
+
+    <p className="text-xs text-slate-500 dark:text-slate-400">
+         AI Powered CRM
+    </p>
+  </div>
+</div>
       {/* Navigation links */}
       <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-4">
         {visibleItems.map(item => (

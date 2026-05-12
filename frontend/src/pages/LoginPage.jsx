@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
+import Logo from '../components/Logo'
 import { ArrowRightIcon, ShieldCheckIcon, SparklesIcon } from '@heroicons/react/24/outline'
 
 export default function LoginPage() {
@@ -62,6 +63,10 @@ export default function LoginPage() {
     toast.success('Entered demo workspace')
     navigate('/dashboard', { replace: true })
   }
+  <div className="flex items-center gap-2">
+  <LoadingSpinner size="sm" />
+  <span>SynapseCRM</span>
+</div>
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
@@ -92,7 +97,6 @@ export default function LoginPage() {
               Customer intelligence, pipelines, and decisions in one secure workspace.
             </h1>
             <p className="mt-5 max-w-xl text-lg leading-8 text-slate-300">
-              SynapseCRM brings operational clarity to sales, support, and management with a polished interface built for daily enterprise use.
             </p>
           </div>
 
@@ -116,20 +120,12 @@ export default function LoginPage() {
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.12),transparent_32%)]" aria-hidden="true" />
             <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(59,130,246,0.03),transparent_50%)]" aria-hidden="true" />
             <div className="relative">
-              <div className="mb-8 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-brand-600 to-brand-700 shadow-[0_18px_35px_-18px_rgba(37,99,235,0.95)]">
-                    <span className="text-lg font-bold text-white">S</span>
-                  </div>
-                  <div>
-                    <h1 className="text-xl font-bold text-slate-900 dark:text-white">SynapseCRM</h1>
-                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">AI-Driven CRM Platform</p>
-                  </div>
-                </div>
-                <div className="hidden rounded-full border border-emerald-200/70 bg-linear-to-r from-emerald-50 to-teal-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-linear-to-r dark:from-emerald-900/30 dark:to-teal-900/20 dark:text-emerald-300 sm:block">
-                  Secure sign in
-                </div>
+              <div className="mb-8 flex flex-col items-center justify-center gap-6">
+              <Logo size="normal" />
+              <div className="hidden rounded-full border border-emerald-200/70 bg-linear-to-r from-emerald-50 to-teal-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-linear-to-r dark:from-emerald-900/30 dark:to-teal-900/20 dark:text-emerald-300 sm:block">
+                Secure sign in
               </div>
+            </div>
 
               <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">Welcome back</h2>
               <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">Sign in to continue to your customer workspace.</p>

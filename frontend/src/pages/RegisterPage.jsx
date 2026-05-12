@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
+import Logo from '../components/Logo'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
 
 export default function RegisterPage() {
@@ -59,8 +60,9 @@ export default function RegisterPage() {
       <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.94),rgba(15,23,42,0.84)_50%,rgba(37,99,235,0.16)_100%)]" aria-hidden="true" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" aria-hidden="true" />
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-7xl items-center lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="hidden lg:block">
+      <div className="relative mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-7xl items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+        <section className="hidden lg:flex lg:flex-col lg:gap-6">
+          <Logo size="normal" />
           <div className="max-w-xl border border-white/10 bg-white/5 p-8 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.85)] backdrop-blur" style={{ borderRadius: '2rem' }}>
             <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-300">Create your workspace</p>
             <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white">

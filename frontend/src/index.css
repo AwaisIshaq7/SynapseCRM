@@ -18,8 +18,8 @@
 
   --font-sans: Manrope, Inter, system-ui, sans-serif;
 
-  --animate-fade-in: fadeIn 0.2s ease-in-out;
-  --animate-slide-in: slideIn 0.3s ease-out;
+  --animate-fade-in: fadeIn 0.4s ease-in-out;
+  --animate-slide-in: slideIn 0.4s ease-out;
   --animate-float: float 14s ease-in-out infinite;
   --animate-drift: drift 22s ease-in-out infinite;
   --animate-slow-pulse: slowPulse 8s ease-in-out infinite;

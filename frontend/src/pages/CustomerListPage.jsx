@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCustomers } from '../hooks/useCustomers'
 import CustomerCard from '../components/CustomerCard'
-import LoadingSpinner from '../components/LoadingSpinner'
+import SkeletonLoader from '../components/SkeletonLoader'
 import EmptyState from '../components/EmptyState'
  
 
@@ -101,11 +101,7 @@ export default function CustomerListPage() {
       </div>
 
       {/* Content */}
-      {loading && (
-        <div className="flex items-center justify-center py-20">
-          <LoadingSpinner size="lg" />
-        </div>
-      )}
+      {loading && <SkeletonLoader type="card" count={3} className="space-y-4 mb-6" />}
 
       {error && !loading && (
         <div className="card text-center py-12">
