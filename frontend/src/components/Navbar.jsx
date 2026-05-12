@@ -8,12 +8,12 @@ export default function Navbar() {
   return (
     <header
       className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700
-                 flex items-center justify-between px-4 md:px-6 flex-shrink-0"
+                 flex items-center justify-between px-4 md:px-6 shrink-0"
       role="banner"
     >
       {/* Logo + App name — visible on mobile when sidebar is hidden */}
       <Link to="/dashboard" className="flex items-center gap-2 md:hidden">
-        <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
+        <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center shrink-0">
           <span className="text-white font-bold text-xs">S</span>
         </div>
         <span className="font-bold text-gray-900 dark:text-white text-sm">SynapseCRM</span>
@@ -37,7 +37,7 @@ export default function Navbar() {
           </div>
           {/* Avatar */}
           <div
-            className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center flex-shrink-0"
+            className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center shrink-0"
             aria-hidden="true"
           >
             <span className="text-white font-semibold text-sm">

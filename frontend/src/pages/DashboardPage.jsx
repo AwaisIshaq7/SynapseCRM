@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Chart as ChartJS,
@@ -13,7 +13,7 @@ import StatCard from '../components/StatCard'
 import SentimentBadge from '../components/SentimentBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
-import { formatDate, timeAgo } from '../utils/formatters'
+import { timeAgo } from '../utils/formatters'
 import { getChurnRiskClasses } from '../utils/sentimentUtils'
 import clsx from 'clsx'
 
@@ -206,7 +206,7 @@ export default function DashboardPage() {
           <div className="flex justify-center items-center h-48"><LoadingSpinner /></div>
         ) : churnChartData ? (
           <div className="flex items-center gap-6">
-            <div className="w-44 h-44 flex-shrink-0" role="img" aria-label="Doughnut chart showing churn risk levels">
+            <div className="w-44 h-44 shrink-0" role="img" aria-label="Doughnut chart showing churn risk levels">
               <Doughnut
                 data={churnChartData}
                 options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}
@@ -219,7 +219,7 @@ export default function DashboardPage() {
                 { label: 'Low Risk',    value: churnDist?.low    || 0, color: 'bg-green-500' },
               ].map(item => (
                 <div key={item.label} className="flex items-center gap-3">
-                  <div className={clsx('w-3 h-3 rounded-full flex-shrink-0', item.color)} aria-hidden="true" />
+                  <div className={clsx('w-3 h-3 rounded-full shrink-0', item.color)} aria-hidden="true" />
                   <span className="text-sm text-gray-600 dark:text-gray-300">{item.label}</span>
                   <span className="text-sm font-bold text-gray-900 dark:text-white ml-auto">{item.value}</span>
                 </div>
@@ -288,7 +288,7 @@ export default function DashboardPage() {
             <ul className="space-y-3" aria-label="Recent customer interactions">
               {summary.recentInteractions.map(interaction => (
                 <li key={interaction._id} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm flex-shrink-0">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-sm shrink-0">
                     {interaction.type === 'call' ? '📞' : interaction.type === 'email' ? '📧' : interaction.type === 'meeting' ? '🤝' : '📝'}
                   </div>
                   <div className="flex-1 min-w-0">

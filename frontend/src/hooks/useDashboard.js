@@ -27,7 +27,7 @@ export function useDashboard() {
         if (churnRes.status === 'fulfilled' && churnRes.value.data.success) {
           setChurnDist(churnRes.value.data.data)
         }
-      } catch (err) {
+      } catch {
         setError('Dashboard data unavailable')
       } finally {
         setLoading(false)

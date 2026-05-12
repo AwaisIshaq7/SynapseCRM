@@ -1,14 +1,8 @@
-export default function CustomerDetailPage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold">Customer Details</h1>
-    </div>
-  )
-}
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCustomer } from '../hooks/useCustomers'
+import { customersApi } from '../api/customersApi'
 import { interactionsApi } from '../api/interactionsApi'
 import SentimentBadge from '../components/SentimentBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -124,7 +118,7 @@ export default function CustomerDetailPage() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="flex items-start gap-4">
             {/* Avatar */}
-            <div className="w-16 h-16 rounded-xl bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center flex-shrink-0">
+            <div className="w-16 h-16 rounded-xl bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center shrink-0">
               <span className="text-brand-700 dark:text-brand-300 font-bold text-2xl">
                 {customer.name?.charAt(0)?.toUpperCase()}
               </span>
@@ -145,7 +139,7 @@ export default function CustomerDetailPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-2 flex-shrink-0">
+          <div className="flex gap-2 shrink-0">
             <Link to={`/customers/${id}/edit`} className="btn-secondary text-sm">
               ✏️ Edit
             </Link>
@@ -272,7 +266,7 @@ export default function CustomerDetailPage() {
               >
                 {/* Timeline dot */}
                 <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 text-sm">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-sm">
                     {getInteractionIcon(interaction.type)}
                   </div>
                   {idx < interactions.length - 1 && (
@@ -288,7 +282,7 @@ export default function CustomerDetailPage() {
                       </span>
                       <SentimentBadge score={interaction.sentimentScore} label={interaction.sentimentLabel} size="xs" />
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-gray-400" title={formatDate(interaction.date)}>
                         {timeAgo(interaction.date)}
                       </span>

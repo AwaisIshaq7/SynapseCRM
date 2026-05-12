@@ -1,11 +1,11 @@
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useCustomers } from '../hooks/useCustomers'
 import CustomerCard from '../components/CustomerCard'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
-import toast from 'react-hot-toast'
+ 
 
 const STATUS_FILTERS = [
   { value: '', label: 'All Customers' },

@@ -21,7 +21,7 @@ export default function CustomerCard({ customer }) {
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-3">
           {/* Avatar — first letter of name */}
-          <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center shrink-0">
             <span className="text-brand-700 dark:text-brand-300 font-semibold text-sm">
               {customer.name?.charAt(0)?.toUpperCase()}
             </span>

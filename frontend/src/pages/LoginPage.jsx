@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' })
   const [errors,   setErrors]   = useState({})
   const [loading,  setLoading]  = useState(false)
+  const demoMode = import.meta.env.VITE_DEMO_MODE === 'true'
   const { login } = useAuth()
   const navigate  = useNavigate()
 
@@ -55,7 +56,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 to-blue-100 dark:from-gray-950 dark:to-gray-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-brand-50 to-blue-100 dark:from-gray-950 dark:to-gray-900 p-4">
       <div className="w-full max-w-md">
         {/* Card */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 animate-fade-in">
@@ -149,6 +150,20 @@ export default function LoginPage() {
               Create one
             </Link>
           </p>
+
+          {demoMode && (
+            <div className="mt-4">
+              <Link
+                to="/demo-dashboard"
+                className="btn-secondary w-full flex items-center justify-center gap-2 py-2.5"
+              >
+                Open demo dashboard
+              </Link>
+              <p className="mt-2 text-center text-xs text-gray-400">
+                Temporary access for previewing the app before backend integration is complete.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Demo credentials hint */}

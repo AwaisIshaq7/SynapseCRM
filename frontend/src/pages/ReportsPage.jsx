@@ -111,7 +111,7 @@ export default function ReportsPage() {
           <div className="card">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Overall Sentiment Breakdown</h2>
             <div className="flex items-center gap-6">
-              <div className="h-48 w-48 flex-shrink-0" role="img" aria-label="Doughnut chart of overall customer sentiment">
+              <div className="h-48 w-48 shrink-0" role="img" aria-label="Doughnut chart of overall customer sentiment">
                 {sentimentPieData
                   ? <Doughnut data={sentimentPieData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
                   : <div className="flex items-center justify-center h-full text-gray-400 text-sm">No data</div>

@@ -4,6 +4,10 @@ import LoadingSpinner from './components/LoadingSpinner'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage    from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import DashboardPage from './pages/DashboardPage'
+import PrototypePage from './pages/PrototypePage'
+
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
 
 // ─── Placeholder for pages not yet built ────────────────────
 // Remove each placeholder as you build the real page
@@ -49,12 +53,20 @@ export default function App() {
 
       {/* Protected routes */}
       <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard"  element={<ComingSoon name="Dashboard" />} />
+        <Route path="/dashboard"  element={<DashboardPage />} />
         <Route path="/customers"  element={<ComingSoon name="Customers" />} />
         <Route path="/reports"    element={<ComingSoon name="Reports" />} />
         <Route path="/settings"   element={<ComingSoon name="Settings" />} />
         <Route path="/users"      element={<ComingSoon name="User Management" />} />
       </Route>
+
+      {/* Temporary demo-only public access */}
+      <Route
+        path="/demo-dashboard"
+        element={DEMO_MODE ? <DashboardPage /> : <Navigate to="/login" replace />}
+      />
+
+      <Route path="/prototype" element={<PrototypePage />} />
 
       {/* Redirects */}
       <Route path="/" element={<Navigate to={user ? '/dashboard' : '/login'} replace />} />

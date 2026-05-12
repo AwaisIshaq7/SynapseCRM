@@ -3,15 +3,44 @@ import { authApi } from '../api/authApi'
 import { storage } from '../utils/storage'
 
 const AuthContext = createContext(null)
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
+
+const DEMO_USER = {
+  id: 'demo-user',
+  name: 'Demo User',
+  email: 'demo@synapsecrm.local',
+  role: 'admin',
+  preferences: {
+    theme: storage.getTheme() || 'light',
+  },
+}
 
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(storage.getUser()) // hydrate from localStorage
-  const [token, setToken]     = useState(storage.getToken())
+  const [user, setUser]       = useState(storage.getUser() || (DEMO_MODE ? DEMO_USER : null)) // hydrate from localStorage
+  const [token, setToken]     = useState(storage.getToken() || (DEMO_MODE ? 'demo-token' : null))
   const [loading, setLoading] = useState(true) // true until we verify token
+
+  const applyTheme = useCallback((theme) => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+    storage.setTheme(theme)
+  }, [])
 
   // On mount — verify stored token is still valid
   useEffect(() => {
     const verifyToken = async () => {
+      if (DEMO_MODE) {
+        storage.setUser(DEMO_USER)
+        storage.setToken('demo-token')
+        setUser(DEMO_USER)
+        setToken('demo-token')
+        setLoading(false)
+        return
+      }
+
       const storedToken = storage.getToken()
       if (!storedToken) {
         setLoading(false)
@@ -39,18 +68,17 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const theme = user?.preferences?.theme || storage.getTheme() || 'light'
     applyTheme(theme)
-  }, [user])
-
-  const applyTheme = (theme) => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
-    storage.setTheme(theme)
-  }
+  }, [user, applyTheme])
 
   const login = useCallback(async (credentials) => {
+    if (DEMO_MODE) {
+      storage.setUser(DEMO_USER)
+      storage.setToken('demo-token')
+      setUser(DEMO_USER)
+      setToken('demo-token')
+      return { success: true }
+    }
+
     const res = await authApi.login(credentials)
     if (res.data.success) {
       const { token: newToken, user: newUser } = res.data.data
@@ -64,6 +92,14 @@ export function AuthProvider({ children }) {
   }, [])
 
   const register = useCallback(async (userData) => {
+    if (DEMO_MODE) {
+      storage.setUser(DEMO_USER)
+      storage.setToken('demo-token')
+      setUser(DEMO_USER)
+      setToken('demo-token')
+      return { success: true }
+    }
+
     const res = await authApi.register(userData)
     if (res.data.success) {
       const { token: newToken, user: newUser } = res.data.data
@@ -77,6 +113,14 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(() => {
+    if (DEMO_MODE) {
+      storage.setUser(DEMO_USER)
+      storage.setToken('demo-token')
+      setUser(DEMO_USER)
+      setToken('demo-token')
+      return
+    }
+
     storage.clearAll()
     setUser(null)
     setToken(null)
@@ -87,7 +131,7 @@ export function AuthProvider({ children }) {
     setUser(updated)
     storage.setUser(updated)
     if (prefs.theme) applyTheme(prefs.theme)
-  }, [user])
+  }, [user, applyTheme])
 
   const isAdmin = user?.role === 'admin'
   const isSalesManager = user?.role === 'sales_manager'

@@ -1,6 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-900: #1e3a8a;
+
+  --color-sentiment-positive: #16a34a;
+  --color-sentiment-neutral: #d97706;
+  --color-sentiment-negative: #dc2626;
+
+  --font-sans: Inter, system-ui, sans-serif;
+
+  --animate-fade-in: fadeIn 0.2s ease-in-out;
+  --animate-slide-in: slideIn 0.3s ease-out;
+}
 
 @layer base {
   /* Smooth dark mode transition */
@@ -18,7 +34,7 @@
 
   /* Focus-visible for keyboard accessibility — WCAG 2.1 AA */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-brand-500;
+    @apply ring-2 ring-blue-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-950;
   }
 }
 

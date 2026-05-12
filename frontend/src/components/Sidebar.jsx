@@ -62,7 +62,7 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar() {
-  const { user, isAdmin } = useAuth()
+  const { user } = useAuth()
 
   // Filter nav items by role
   const visibleItems = NAV_ITEMS.filter(item =>
@@ -72,14 +72,14 @@ export default function Sidebar() {
   return (
     <aside
       className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
-                 flex-shrink-0 hidden md:flex flex-col"
+                 shrink-0 hidden md:flex flex-col"
       role="navigation"
       aria-label="Main navigation"
     >
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center flex-shrink-0">
+          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center shrink-0">
             <span className="text-white font-bold text-sm">S</span>
           </div>
           <div>
@@ -114,7 +114,7 @@ export default function Sidebar() {
       {/* Role indicator at bottom */}
       <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center flex-shrink-0">
+          <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center shrink-0">
             <span className="text-brand-700 dark:text-brand-300 font-semibold text-xs">
               {user?.name?.charAt(0)?.toUpperCase()}
             </span>

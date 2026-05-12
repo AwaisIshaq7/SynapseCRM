@@ -35,7 +35,8 @@ export default function RegisterPage() {
     if (Object.keys(validationErrors).length > 0) { setErrors(validationErrors); return }
     setLoading(true)
     try {
-      const { confirmPassword, ...submitData } = formData
+      const submitData = { ...formData }
+      delete submitData.confirmPassword
       const result = await register(submitData)
       if (result.success) {
         toast.success('Account created successfully! 🚀')
@@ -51,7 +52,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-brand-50 to-blue-100 dark:from-gray-950 dark:to-gray-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-brand-50 to-blue-100 dark:from-gray-950 dark:to-gray-900 p-4">
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 animate-fade-in">
           <div className="flex items-center justify-center gap-3 mb-8">

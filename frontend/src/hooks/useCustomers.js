@@ -27,7 +27,10 @@ export function useCustomers(initialParams = {}) {
     }
   }, [params])
 
-  useEffect(() => { fetchCustomers() }, [fetchCustomers])
+  useEffect(() => {
+    const t = setTimeout(() => { fetchCustomers() }, 0)
+    return () => clearTimeout(t)
+  }, [fetchCustomers])
 
   const updateParams = useCallback((newParams) => {
     setParams(prev => ({ ...prev, ...newParams }))
@@ -69,7 +72,10 @@ export function useCustomer(id) {
     }
   }, [id])
 
-  useEffect(() => { fetchCustomer() }, [fetchCustomer])
+  useEffect(() => {
+    const t = setTimeout(() => { fetchCustomer() }, 0)
+    return () => clearTimeout(t)
+  }, [fetchCustomer])
 
   return { customer, loading, error, refetch: fetchCustomer, setCustomer }
 }

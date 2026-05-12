@@ -4,7 +4,6 @@ import { useAuth } from '../hooks/useAuth'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
 import toast from 'react-hot-toast'
-import { formatDate } from '../utils/formatters'
 import clsx from 'clsx'
 
 export default function UserManagementPage() {
@@ -89,7 +88,7 @@ export default function UserManagementPage() {
                   >
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center shrink-0">
                           <span className="text-brand-700 dark:text-brand-300 font-semibold text-sm">
                             {u.name?.charAt(0)?.toUpperCase()}
                           </span>
