@@ -46,7 +46,7 @@ export default function UserManagementPage() {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-6 rounded-2xl bg-linear-to-r from-green-50/50 to-emerald-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">User Management</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">

@@ -7,21 +7,20 @@ export default function Navbar() {
 
   return (
     <header
-      className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700
-                 flex items-center justify-between px-4 md:px-6 shrink-0"
+      className="sticky top-0 z-20 flex h-16 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/75 px-4 shadow-[0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/70 md:px-6"
       role="banner"
     >
       {/* Logo + App name — visible on mobile when sidebar is hidden */}
       <Link to="/dashboard" className="flex items-center gap-2 md:hidden">
-        <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center shrink-0">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-600 shadow-[0_12px_24px_-12px_rgba(37,99,235,0.75)]">
           <span className="text-white font-bold text-xs">S</span>
         </div>
-        <span className="font-bold text-gray-900 dark:text-white text-sm">SynapseCRM</span>
+        <span className="text-sm font-bold text-slate-900 dark:text-white">SynapseCRM</span>
       </Link>
 
       <div className="hidden md:block">
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Welcome back, <span className="font-medium text-gray-900 dark:text-white">{user?.name}</span>
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Welcome back, <span className="font-semibold text-slate-900 dark:text-white">{user?.name}</span>
         </p>
       </div>
 
@@ -30,14 +29,14 @@ export default function Navbar() {
         <ThemeToggle />
 
         {/* User menu */}
-        <div className="flex items-center gap-3 pl-2 border-l border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-3 rounded-2xl border border-slate-200/70 bg-white/60 px-3 py-1.5 dark:border-slate-700/70 dark:bg-slate-950/30">
           <div className="text-right hidden sm:block">
-            <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.name}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">{user?.role?.replace('_', ' ')}</p>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">{user?.name}</p>
+            <p className="text-xs capitalize text-slate-500 dark:text-slate-400">{user?.role?.replace('_', ' ')}</p>
           </div>
           {/* Avatar */}
           <div
-            className="w-8 h-8 rounded-full bg-brand-600 flex items-center justify-center shrink-0"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 shadow-[0_12px_24px_-12px_rgba(37,99,235,0.75)]"
             aria-hidden="true"
           >
             <span className="text-white font-semibold text-sm">
@@ -46,8 +45,7 @@ export default function Navbar() {
           </div>
           <button
             onClick={logout}
-            className="text-sm text-gray-500 hover:text-red-600 dark:text-gray-400
-                       dark:hover:text-red-400 transition-colors font-medium"
+            className="text-sm font-semibold text-slate-500 transition-colors hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400"
             aria-label="Log out of SynapseCRM"
           >
             Logout

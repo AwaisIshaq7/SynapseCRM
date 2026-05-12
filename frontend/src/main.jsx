@@ -20,16 +20,17 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             duration: 4000,
             style: {
               borderRadius: '10px',
-              fontFamily: 'Inter, sans-serif',
+              fontFamily: 'Manrope, Inter, sans-serif',
               fontSize: '14px',
+                backdropFilter: 'blur(14px)',
             },
             success: {
               iconTheme: { primary: '#16a34a', secondary: '#fff' },
-              style: { background: '#f0fdf4', color: '#166534', border: '1px solid #86efac' },
+              style: { background: 'rgba(240, 253, 244, 0.95)', color: '#166534', border: '1px solid rgba(134, 239, 172, 0.7)' },
             },
             error: {
               iconTheme: { primary: '#dc2626', secondary: '#fff' },
-              style: { background: '#fef2f2', color: '#991b1b', border: '1px solid #fca5a5' },
+              style: { background: 'rgba(254, 242, 242, 0.95)', color: '#991b1b', border: '1px solid rgba(252, 165, 165, 0.7)' },
             },
           }}
         />

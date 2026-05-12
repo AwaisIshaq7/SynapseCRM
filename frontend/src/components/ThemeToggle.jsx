@@ -1,45 +1,26 @@
 import { useAuth } from '../hooks/useAuth'
-import { usersApi } from '../api/usersApi'
+import { SunIcon, MoonIcon } from '@heroicons/react/24/outline'
 
 /**
  * Dark/Light mode toggle.
- * Saves preference to backend + localStorage via AuthContext.
+ * Uses AuthContext so the theme class and stored preference stay in sync.
  */
 export default function ThemeToggle() {
-  const { user, updateUserPreferences } = useAuth()
-  const isDark = user?.preferences?.theme === 'dark'
+  const { theme, toggleTheme } = useAuth()
+  const isDark = theme === 'dark'
 
-  const toggle = async () => {
-    const newTheme = isDark ? 'light' : 'dark'
-    updateUserPreferences({ theme: newTheme }) // immediately apply locally
-
-    // Persist to backend (fire and forget — don't block UI)
-    try {
-      await usersApi.updatePreferences({ theme: newTheme })
-    } catch {
-      // silent fail — localStorage already updated
-    }
+  const handleToggle = () => {
+    toggleTheme()
   }
 
   return (
     <button
-      onClick={toggle}
-      className="p-2 rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100
-                 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:bg-gray-700 transition-colors"
+      onClick={handleToggle}
+      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white/80 text-slate-500 shadow-sm backdrop-blur transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:text-brand-600 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300 dark:hover:border-brand-700 dark:hover:text-brand-300"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Light mode' : 'Dark mode'}
     >
-      {isDark ? (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
-        </svg>
-      ) : (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-      )}
+      {isDark ? <SunIcon className="h-5 w-5" aria-hidden="true" /> : <MoonIcon className="h-5 w-5" aria-hidden="true" />}
     </button>
   )
 }

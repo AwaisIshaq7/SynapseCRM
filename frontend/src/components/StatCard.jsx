@@ -10,15 +10,15 @@ export default function StatCard({
   icon,
   trend,          // 'up' | 'down' | null
   trendValue,
-  colorClass = 'text-brand-600 bg-brand-50 dark:bg-brand-900/20',
+  colorClass = 'text-brand-600 bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-900/40 dark:to-brand-900/20',
   loading = false,
   onClick,
 }) {
   return (
     <div
       className={clsx(
-        'card group transition-all duration-200',
-        onClick && 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'
+        'card group transition-all duration-200 hover:shadow-lg',
+        onClick && 'cursor-pointer hover:-translate-y-1'
       )}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
@@ -47,7 +47,7 @@ export default function StatCard({
           )}
         </div>
         {icon && (
-          <div className={clsx('p-3 rounded-xl', colorClass)}>
+          <div className={clsx('p-3 rounded-xl transition-all duration-200 group-hover:scale-110', colorClass)}>
             {icon}
           </div>
         )}

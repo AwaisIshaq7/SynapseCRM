@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { dashboardApi } from '../api/dashboardApi'
 
-export function useDashboard() {
+export function useDashboard(days = 7) {
   const [summary,       setSummary]       = useState(null)
   const [sentimentTrend, setSentimentTrend] = useState(null)
   const [churnDist,     setChurnDist]     = useState(null)
@@ -14,7 +14,7 @@ export function useDashboard() {
       try {
         const [summaryRes, trendRes, churnRes] = await Promise.allSettled([
           dashboardApi.getSummary(),
-          dashboardApi.getSentimentTrend(7),
+          dashboardApi.getSentimentTrend(days),
           dashboardApi.getChurnDistribution(),
         ])
 
@@ -34,7 +34,7 @@ export function useDashboard() {
       }
     }
     fetchAll()
-  }, [])
+  }, [days])
 
   return { summary, sentimentTrend, churnDist, loading, error }
 }

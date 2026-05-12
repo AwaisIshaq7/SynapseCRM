@@ -12,20 +12,41 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarEleme
 
 export default function ReportsPage() {
   const { user } = useAuth()
-  const { summary, sentimentTrend, churnDist, loading } = useDashboard()
   const [days, setDays] = useState(7)
+  const { summary, sentimentTrend, churnDist, loading } = useDashboard(days)
   const isDark = user?.preferences?.theme === 'dark'
 
-  const gridColor  = isDark ? '#374151' : '#f3f4f6'
+  const gridColor  = isDark ? 'rgba(148,163,184,0.16)' : 'rgba(148,163,184,0.2)'
   const tickColor  = isDark ? '#9ca3af' : '#6b7280'
   const legendColor = isDark ? '#d1d5db' : '#374151'
+
+  const getAreaGradient = (context, startColor, endColor) => {
+    const { chart } = context
+    const { ctx, chartArea } = chart
+    if (!chartArea) return endColor
+
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+    gradient.addColorStop(0, startColor)
+    gradient.addColorStop(1, endColor)
+    return gradient
+  }
 
   const baseChartOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       legend: { labels: { color: legendColor, font: { family: 'Inter', size: 12 } } },
-      tooltip: { mode: 'index', intersect: false },
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
+        titleColor: isDark ? '#f8fafc' : '#0f172a',
+        bodyColor: isDark ? '#cbd5e1' : '#334155',
+        borderColor: isDark ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.22)',
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 10,
+      },
     },
     scales: {
       x: { ticks: { color: tickColor }, grid: { color: gridColor } },
@@ -36,9 +57,39 @@ export default function ReportsPage() {
   const sentimentData = sentimentTrend ? {
     labels: sentimentTrend.labels,
     datasets: [
-      { label: 'Positive', data: sentimentTrend.positive, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.15)', fill: true, tension: 0.4 },
-      { label: 'Neutral',  data: sentimentTrend.neutral,  borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,0.15)', fill: true, tension: 0.4 },
-      { label: 'Negative', data: sentimentTrend.negative, borderColor: '#dc2626', backgroundColor: 'rgba(220,38,38,0.15)', fill: true, tension: 0.4 },
+      {
+        label: 'Positive',
+        data: sentimentTrend.positive,
+        borderColor: '#16a34a',
+        backgroundColor: (context) => getAreaGradient(context, 'rgba(22,163,74,0.28)', 'rgba(22,163,74,0.02)'),
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2.2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+      },
+      {
+        label: 'Neutral',
+        data: sentimentTrend.neutral,
+        borderColor: '#d97706',
+        backgroundColor: (context) => getAreaGradient(context, 'rgba(217,119,6,0.28)', 'rgba(217,119,6,0.02)'),
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2.2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+      },
+      {
+        label: 'Negative',
+        data: sentimentTrend.negative,
+        borderColor: '#dc2626',
+        backgroundColor: (context) => getAreaGradient(context, 'rgba(220,38,38,0.28)', 'rgba(220,38,38,0.02)'),
+        fill: true,
+        tension: 0.4,
+        borderWidth: 2.2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+      },
     ],
   } : null
 
@@ -47,8 +98,14 @@ export default function ReportsPage() {
     datasets: [{
       label: 'Customers',
       data: [churnDist.high || 0, churnDist.medium || 0, churnDist.low || 0],
-      backgroundColor: ['rgba(220,38,38,0.8)', 'rgba(217,119,6,0.8)', 'rgba(22,163,74,0.8)'],
+      backgroundColor: (context) => {
+        if (context.dataIndex === 0) return getAreaGradient(context, 'rgba(220,38,38,0.92)', 'rgba(248,113,113,0.62)')
+        if (context.dataIndex === 1) return getAreaGradient(context, 'rgba(217,119,6,0.92)', 'rgba(251,191,36,0.62)')
+        return getAreaGradient(context, 'rgba(22,163,74,0.92)', 'rgba(74,222,128,0.62)')
+      },
       borderRadius: 6,
+      borderWidth: 1,
+      borderColor: isDark ? 'rgba(15,23,42,0.7)' : 'rgba(255,255,255,0.8)',
     }],
   } : null
 
@@ -59,12 +116,31 @@ export default function ReportsPage() {
       backgroundColor: ['#16a34a', '#d97706', '#dc2626'],
       borderColor: isDark ? '#1f2937' : '#fff',
       borderWidth: 3,
+      hoverOffset: 10,
     }],
   } : null
 
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '64%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
+        titleColor: isDark ? '#f8fafc' : '#0f172a',
+        bodyColor: isDark ? '#cbd5e1' : '#334155',
+        borderColor: isDark ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.22)',
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 10,
+      },
+    },
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <div>
+        <div className="page-section-enter rounded-2xl bg-linear-to-r from-purple-50/50 to-pink-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & Analytics</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Visual breakdown of customer sentiment and churn risk</p>
       </div>
@@ -74,7 +150,7 @@ export default function ReportsPage() {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Sentiment Trend Line Chart */}
-          <div className="card lg:col-span-2">
+          <div className="card page-section-enter lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Sentiment Trend</h2>
               <select
@@ -97,7 +173,7 @@ export default function ReportsPage() {
           </div>
 
           {/* Churn Distribution Bar */}
-          <div className="card">
+          <div className="card page-section-enter">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Churn Risk Distribution</h2>
             <div className="h-56" role="img" aria-label="Bar chart showing customer count by churn risk level">
               {churnBarData
@@ -108,12 +184,12 @@ export default function ReportsPage() {
           </div>
 
           {/* Sentiment Breakdown Pie */}
-          <div className="card">
+          <div className="card page-section-enter">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Overall Sentiment Breakdown</h2>
             <div className="flex items-center gap-6">
               <div className="h-48 w-48 shrink-0" role="img" aria-label="Doughnut chart of overall customer sentiment">
                 {sentimentPieData
-                  ? <Doughnut data={sentimentPieData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
+                  ? <Doughnut data={sentimentPieData} options={pieOptions} />
                   : <div className="flex items-center justify-center h-full text-gray-400 text-sm">No data</div>
                 }
               </div>

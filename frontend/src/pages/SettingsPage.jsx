@@ -48,7 +48,9 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+        <div className="rounded-2xl bg-linear-to-r from-orange-50/50 to-amber-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6 mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+        </div>
 
       {/* Appearance */}
       <div className="card">

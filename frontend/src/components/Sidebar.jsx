@@ -6,6 +6,8 @@ const NAV_ITEMS = [
   {
     to: '/dashboard',
     label: 'Dashboard',
+    subtitle: 'Overview and health',
+    badge: 'Live',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -17,6 +19,8 @@ const NAV_ITEMS = [
   {
     to: '/customers',
     label: 'Customers',
+    subtitle: 'Pipeline and profiles',
+    badge: 'CRM',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -28,6 +32,8 @@ const NAV_ITEMS = [
   {
     to: '/reports',
     label: 'Reports',
+    subtitle: 'Charts and trends',
+    badge: 'AI',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -39,6 +45,8 @@ const NAV_ITEMS = [
   {
     to: '/users',
     label: 'User Management',
+    subtitle: 'Roles and access',
+    badge: 'Admin',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -51,6 +59,8 @@ const NAV_ITEMS = [
   {
     to: '/settings',
     label: 'Settings',
+    subtitle: 'Theme and preferences',
+    badge: 'Prefs',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -71,57 +81,71 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700
-                 shrink-0 hidden md:flex flex-col"
+      className="hidden w-80 shrink-0 flex-col border-r border-slate-200/70 bg-white/75 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/65 md:flex"
       role="navigation"
       aria-label="Main navigation"
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex h-16 items-center border-b border-slate-200/70 px-6 dark:border-slate-700/70">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-brand-600 rounded-lg flex items-center justify-center shrink-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-600 shadow-[0_12px_24px_-12px_rgba(37,99,235,0.75)]">
             <span className="text-white font-bold text-sm">S</span>
           </div>
           <div>
-            <p className="font-bold text-gray-900 dark:text-white text-sm leading-tight">SynapseCRM</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400">AI-Driven CRM</p>
+            <p className="text-sm font-bold leading-tight text-slate-900 dark:text-white">SynapseCRM</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">AI-Driven CRM</p>
           </div>
         </div>
       </div>
 
       {/* Navigation links */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-4">
         {visibleItems.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
               clsx(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+                'group flex items-center gap-3 rounded-2xl px-3.5 py-3 transition-all duration-200',
                 isActive
-                  ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400'
-                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
+                  ? 'border border-brand-200 bg-linear-to-r from-brand-50 to-brand-100/40 text-brand-700 shadow-[0_16px_30px_-24px_rgba(37,99,235,0.7)] dark:border-brand-900/40 dark:bg-linear-to-r dark:from-brand-900/30 dark:to-brand-900/15 dark:text-brand-300'
+                  : 'border border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 dark:hover:text-slate-100'
               )
             }
-            aria-current={({ isActive }) => isActive ? 'page' : undefined}
           >
-            {item.icon}
-            {item.label}
+            <div className="rounded-xl bg-white/70 p-2.5 shadow-sm dark:bg-slate-900/60">
+              {item.icon}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{item.label}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</p>
+            </div>
+            <span className="rounded-full border border-slate-200/80 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
+              {item.badge}
+            </span>
           </NavLink>
         ))}
       </nav>
 
+      <div className="mx-4 mb-3 rounded-2xl border border-slate-200/70 bg-linear-to-br from-white/90 to-slate-50/80 p-3 dark:border-slate-700/70 dark:from-slate-900/85 dark:to-slate-900/65">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Workspace status</p>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+          <span className="rounded-lg bg-emerald-50 px-2 py-1 font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Realtime UI</span>
+          <span className="rounded-lg bg-blue-50 px-2 py-1 font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Adaptive</span>
+        </div>
+      </div>
+
       {/* Role indicator at bottom */}
-      <div className="px-4 py-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="border-t border-slate-200/70 px-4 py-4 dark:border-slate-700/70">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-brand-900/40 flex items-center justify-center shrink-0">
-            <span className="text-brand-700 dark:text-brand-300 font-semibold text-xs">
+          <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/40">
+            <span className="text-xs font-semibold text-brand-700 dark:text-brand-300">
               {user?.name?.charAt(0)?.toUpperCase()}
             </span>
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{user?.name}</p>
-            <p className="text-xs text-gray-400 capitalize">{user?.role?.replace('_', ' ')}</p>
+            <p className="truncate text-xs font-semibold text-slate-700 dark:text-slate-300">{user?.name}</p>
+            <p className="text-xs capitalize text-slate-400">{user?.role?.replace('_', ' ')}</p>
           </div>
         </div>
       </div>

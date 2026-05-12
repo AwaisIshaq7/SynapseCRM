@@ -15,31 +15,45 @@ const DEMO_USER = {
   },
 }
 
+const createDemoSession = (setUser, setToken) => {
+  storage.setUser(DEMO_USER)
+  storage.setToken('demo-token')
+  setUser(DEMO_USER)
+  setToken('demo-token')
+}
+
+const applyThemeToDocument = (theme) => {
+  if (typeof document === 'undefined') return
+
+  document.documentElement.classList.toggle('dark', theme === 'dark')
+  document.documentElement.style.colorScheme = theme
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser]       = useState(storage.getUser() || (DEMO_MODE ? DEMO_USER : null)) // hydrate from localStorage
-  const [token, setToken]     = useState(storage.getToken() || (DEMO_MODE ? 'demo-token' : null))
+  const storedUser = storage.getUser()
+  // Don't restore demo users from storage
+  const initialUser = storedUser?.id === 'demo-user' ? null : storedUser
+  const [user, setUser]       = useState(initialUser)
+  const [token, setToken]     = useState(null)
   const [loading, setLoading] = useState(true) // true until we verify token
 
   const applyTheme = useCallback((theme) => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark')
-    } else {
-      document.documentElement.classList.remove('dark')
-    }
+    applyThemeToDocument(theme)
     storage.setTheme(theme)
   }, [])
 
   // On mount — verify stored token is still valid
   useEffect(() => {
     const verifyToken = async () => {
-      if (DEMO_MODE) {
-        storage.setUser(DEMO_USER)
-        storage.setToken('demo-token')
-        setUser(DEMO_USER)
-        setToken('demo-token')
-        setLoading(false)
-        return
-      }
+      // Demo mode disabled - always require login
+      // if (DEMO_MODE) {
+      //   storage.setUser(DEMO_USER)
+      //   storage.setToken('demo-token')
+      //   setUser(DEMO_USER)
+      //   setToken('demo-token')
+      //   setLoading(false)
+      //   return
+      // }
 
       const storedToken = storage.getToken()
       if (!storedToken) {
@@ -71,13 +85,10 @@ export function AuthProvider({ children }) {
   }, [user, applyTheme])
 
   const login = useCallback(async (credentials) => {
-    if (DEMO_MODE) {
-      storage.setUser(DEMO_USER)
-      storage.setToken('demo-token')
-      setUser(DEMO_USER)
-      setToken('demo-token')
-      return { success: true }
-    }
+    // if (DEMO_MODE) {
+    //   createDemoSession(setUser, setToken)
+    //   return { success: true }
+    // }
 
     const res = await authApi.login(credentials)
     if (res.data.success) {
@@ -93,10 +104,7 @@ export function AuthProvider({ children }) {
 
   const register = useCallback(async (userData) => {
     if (DEMO_MODE) {
-      storage.setUser(DEMO_USER)
-      storage.setToken('demo-token')
-      setUser(DEMO_USER)
-      setToken('demo-token')
+      createDemoSession(setUser, setToken)
       return { success: true }
     }
 
@@ -114,10 +122,7 @@ export function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     if (DEMO_MODE) {
-      storage.setUser(DEMO_USER)
-      storage.setToken('demo-token')
-      setUser(DEMO_USER)
-      setToken('demo-token')
+      createDemoSession(setUser, setToken)
       return
     }
 
@@ -133,6 +138,19 @@ export function AuthProvider({ children }) {
     if (prefs.theme) applyTheme(prefs.theme)
   }, [user, applyTheme])
 
+  const loginAsDemo = useCallback(() => {
+    createDemoSession(setUser, setToken)
+    return { success: true }
+  }, [])
+
+  const theme = user?.preferences?.theme || storage.getTheme() || 'light'
+
+  const toggleTheme = useCallback(() => {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark'
+    updateUserPreferences({ theme: nextTheme })
+    return nextTheme
+  }, [theme, updateUserPreferences])
+
   const isAdmin = user?.role === 'admin'
   const isSalesManager = user?.role === 'sales_manager'
 
@@ -144,8 +162,11 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      loginAsDemo,
       isAdmin,
       isSalesManager,
+      theme,
+      toggleTheme,
       updateUserPreferences,
     }}>
       {children}

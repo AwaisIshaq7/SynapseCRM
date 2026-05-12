@@ -74,6 +74,17 @@ export default function DashboardPage() {
   // ─── CHART DATA ───────────────────────────────────────────
   const isDark = user?.preferences?.theme === 'dark'
 
+  const getAreaGradient = (context, startColor, endColor) => {
+    const { chart } = context
+    const { ctx, chartArea } = chart
+    if (!chartArea) return endColor
+
+    const gradient = ctx.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
+    gradient.addColorStop(0, startColor)
+    gradient.addColorStop(1, endColor)
+    return gradient
+  }
+
   const sentimentChartData = sentimentTrend ? {
     labels: sentimentTrend.labels,
     datasets: [
@@ -81,25 +92,34 @@ export default function DashboardPage() {
         label: 'Positive',
         data: sentimentTrend.positive,
         borderColor: '#16a34a',
-        backgroundColor: 'rgba(22,163,74,0.1)',
+        backgroundColor: (context) => getAreaGradient(context, 'rgba(22,163,74,0.28)', 'rgba(22,163,74,0.02)'),
         fill: true,
         tension: 0.4,
+        borderWidth: 2.2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
       },
       {
         label: 'Neutral',
         data: sentimentTrend.neutral,
         borderColor: '#d97706',
-        backgroundColor: 'rgba(217,119,6,0.1)',
+        backgroundColor: (context) => getAreaGradient(context, 'rgba(217,119,6,0.26)', 'rgba(217,119,6,0.02)'),
         fill: true,
         tension: 0.4,
+        borderWidth: 2.2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
       },
       {
         label: 'Negative',
         data: sentimentTrend.negative,
         borderColor: '#dc2626',
-        backgroundColor: 'rgba(220,38,38,0.1)',
+        backgroundColor: (context) => getAreaGradient(context, 'rgba(220,38,38,0.26)', 'rgba(220,38,38,0.02)'),
         fill: true,
         tension: 0.4,
+        borderWidth: 2.2,
+        pointRadius: 2,
+        pointHoverRadius: 4,
       },
     ],
   } : null
@@ -120,21 +140,54 @@ export default function DashboardPage() {
     maintainAspectRatio: false,
     plugins: {
       legend: {
-        labels: { color: isDark ? '#9ca3af' : '#6b7280', font: { size: 12, family: 'Inter' } }
+        labels: { color: isDark ? '#9ca3af' : '#6b7280', font: { size: 12, family: 'Manrope, sans-serif' } }
+      },
+      tooltip: {
+        backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
+        titleColor: isDark ? '#f8fafc' : '#0f172a',
+        bodyColor: isDark ? '#cbd5e1' : '#334155',
+        borderColor: isDark ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.22)',
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 10,
       },
     },
     scales: {
       x: {
         ticks: { color: isDark ? '#9ca3af' : '#6b7280' },
-        grid:  { color: isDark ? '#374151' : '#f3f4f6' },
+        grid:  { color: isDark ? 'rgba(148,163,184,0.16)' : 'rgba(148,163,184,0.2)' },
       },
       y: {
         ticks: { color: isDark ? '#9ca3af' : '#6b7280' },
-        grid:  { color: isDark ? '#374151' : '#f3f4f6' },
+        grid:  { color: isDark ? 'rgba(148,163,184,0.16)' : 'rgba(148,163,184,0.2)' },
         beginAtZero: true,
       },
     },
   }
+
+  const doughnutOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '68%',
+    radius: '94%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
+        titleColor: isDark ? '#f8fafc' : '#0f172a',
+        bodyColor: isDark ? '#cbd5e1' : '#334155',
+        borderColor: isDark ? 'rgba(59,130,246,0.4)' : 'rgba(59,130,246,0.22)',
+        borderWidth: 1,
+        padding: 10,
+        cornerRadius: 10,
+      },
+    },
+  }
+
+  const recentCount = summary?.recentInteractions?.length || 0
+  const alertCount = summary?.churnAlerts?.length || 0
+  const currentHour = new Date().getHours()
+  const todayGreeting = currentHour < 12 ? 'morning' : currentHour < 18 ? 'afternoon' : 'evening'
 
   // ─── WIDGET RENDERERS ─────────────────────────────────────
   const widgets = {
@@ -148,7 +201,7 @@ export default function DashboardPage() {
             label="Total Customers"
             value={summary?.totalCustomers}
             loading={loading}
-            colorClass="text-brand-600 bg-brand-50 dark:bg-brand-900/20"
+              colorClass="text-brand-600 bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-900/40 dark:to-brand-900/20"
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>}
             onClick={() => navigate('/customers')}
           />
@@ -156,7 +209,7 @@ export default function DashboardPage() {
             label="At Risk"
             value={summary?.atRiskCount}
             loading={loading}
-            colorClass="text-red-600 bg-red-50 dark:bg-red-900/20"
+              colorClass="text-red-600 bg-gradient-to-br from-red-100 to-red-50 dark:from-red-900/40 dark:to-red-900/20"
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>}
             onClick={() => navigate('/customers?status=at_risk')}
           />
@@ -164,14 +217,14 @@ export default function DashboardPage() {
             label="Positive Sentiment"
             value={summary?.positiveCount}
             loading={loading}
-            colorClass="text-green-600 bg-green-50 dark:bg-green-900/20"
+              colorClass="text-green-600 bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/40 dark:to-green-900/20"
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           />
           <StatCard
             label="Negative Sentiment"
             value={summary?.negativeCount}
             loading={loading}
-            colorClass="text-amber-600 bg-amber-50 dark:bg-amber-900/20"
+              colorClass="text-amber-600 bg-gradient-to-br from-amber-100 to-amber-50 dark:from-amber-900/40 dark:to-amber-900/20"
             icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
           />
         </div>
@@ -209,7 +262,7 @@ export default function DashboardPage() {
             <div className="w-44 h-44 shrink-0" role="img" aria-label="Doughnut chart showing churn risk levels">
               <Doughnut
                 data={churnChartData}
-                options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }}
+                options={doughnutOptions}
               />
             </div>
             <div className="space-y-3">
@@ -318,23 +371,93 @@ export default function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      {/* Page header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          {isAdmin ? 'Admin Dashboard' : 'Sales Dashboard'}
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          {isAdmin
-            ? 'Full system overview — all customers and users'
-            : `Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${user?.name?.split(' ')[0]}! Here's your sales snapshot.`
-          }
-        </p>
-      </div>
+      <section className="page-section-enter relative overflow-hidden rounded-3xl border border-slate-200 p-6 shadow-sm backdrop-blur dark:border-slate-700 sm:p-8">
+        {/* Enhanced gradient background */}
+        <div className="absolute inset-0 bg-linear-to-br from-white/95 to-slate-50/90 dark:from-slate-900/90 dark:to-slate-950/85" aria-hidden="true" />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.18),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.14),transparent_32%)]"
+        />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(59,130,246,0.04),transparent_50%)]" aria-hidden="true" />
+        <div className="relative grid gap-6 lg:grid-cols-[1.4fr_0.9fr] lg:items-center">
+          <div>
+            <div className="inline-flex items-center rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-brand-700 dark:border-brand-900/40 dark:bg-brand-900/20 dark:text-brand-300">
+              {isAdmin ? 'Admin cockpit' : 'Sales workspace'}
+            </div>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+              {isAdmin
+                ? 'Run the customer operation from one command center.'
+                : `Good ${todayGreeting}, ${user?.name?.split(' ')[0] || 'there'}. Keep every follow-up moving.`}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300 sm:text-base">
+              {isAdmin
+                ? 'Monitor customer health, churn exposure, and team activity without hopping between screens.'
+                : 'Track customer sentiment, review churn risk, and focus on the conversations that need attention next.'}
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link to="/customers" className="btn-primary">
+                Open customers
+              </Link>
+              <Link to="/reports" className="btn-secondary">
+                View reports
+              </Link>
+              {isAdmin ? (
+                <Link to="/users" className="btn-secondary">
+                  Manage users
+                </Link>
+              ) : (
+                <Link to="/settings" className="btn-secondary">
+                  Review settings
+                </Link>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-2xl bg-linear-to-br from-slate-900 to-slate-950 p-4 text-white shadow-lg shadow-slate-900/20 dark:shadow-slate-900/40">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-300">Coverage</p>
+              <p className="mt-2 text-3xl font-semibold">{summary?.totalCustomers ?? 0}</p>
+              <p className="mt-1 text-sm text-slate-300">customers under active watch</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-linear-to-br from-white/95 to-slate-50/90 p-4 shadow-sm dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-900/90 dark:to-slate-950/80">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Risk</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">{summary?.atRiskCount ?? 0}</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">customers needing a closer look</p>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-linear-to-br from-white/95 to-slate-50/90 p-4 shadow-sm dark:border-slate-700 dark:bg-linear-to-br dark:from-slate-900/90 dark:to-slate-950/80">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500 dark:text-slate-400">Activity</p>
+              <p className="mt-2 text-3xl font-semibold text-slate-900 dark:text-white">{recentCount}</p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">recent interactions logged</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-5 dark:border-slate-700">
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            {alertCount} churn alerts
+          </span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            {summary?.positiveCount ?? 0} positive signals
+          </span>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+            {summary?.negativeCount ?? 0} negative signals
+          </span>
+        </div>
+      </section>
 
       {/* Render widgets in adaptive order */}
       {widgetOrder
         .filter(w => widgets[w]) // only render widgets that exist
-        .map(widgetName => widgets[widgetName])
+        .map((widgetName, index) => (
+          <div
+            key={widgetName}
+            className="page-section-enter"
+            style={{ animationDelay: `${0.04 + index * 0.05}s` }}
+          >
+            {widgets[widgetName]}
+          </div>
+        ))
       }
     </div>
   )
