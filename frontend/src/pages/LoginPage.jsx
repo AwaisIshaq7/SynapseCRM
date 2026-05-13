@@ -73,7 +73,7 @@ export default function LoginPage() {
 
   {/* Main soft backdrop */}
   <div
-    className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-blue-100/40"
+    className="absolute inset-0 bg-linear-to-br from-white via-slate-50 to-blue-100/40"
     aria-hidden="true"
   />
 
