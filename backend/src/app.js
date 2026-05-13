@@ -6,13 +6,22 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+// CORS — allow local dev and Vercel production
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://synapsecrm.vercel.app',
+  ],
+  credentials: true,
+}));
+
 app.use(express.json());
 
+// Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/customers', require('./routes/customerRoutes'));
 app.use('/api/customers/:id/interactions', require('./routes/interactionRoutes'));
-app.use('/api/interactions', require('./routes/standaloneInteractionRoutes'));
 app.use('/api/dashboard', require('./routes/dashboardRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/rag', require('./routes/ragRoutes'));
