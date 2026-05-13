@@ -8,32 +8,62 @@ let token;
 let customerId;
 
 beforeAll(async () => {
-  await mongoose.connect(process.env.MONGO_URI);
+  try {
+    // Ensure connection is ready (jest.setup.js handles initial connection)
+    if (mongoose.connection.readyState !== 1) {
+      const connectionOptions = {
+        authSource: 'admin',
+        retryWrites: false,
+        directConnection: true,
+        maxPoolSize: 10,
+        minPoolSize: 2,
+        connectTimeoutMS: 10000,
+        serverSelectionTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+      };
+      await mongoose.connect(process.env.MONGO_URI, connectionOptions);
+    }
 
-  // Register and login test user
-  await request(app)
-    .post('/api/auth/register')
-    .send({
-      name: 'Test Admin',
-      email: 'testadmin@example.com',
-      password: 'TestPass123',
-      role: 'admin',
-    });
+    // Clean up test data from previous runs
+    if (mongoose.connection.readyState === 1) {
+      await Customer.deleteMany({ email: /testcustomer/ });
+      await User.deleteMany({ email: /testadmin/ });
+    }
 
-  const loginRes = await request(app)
-    .post('/api/auth/login')
-    .send({
-      email: 'testadmin@example.com',
-      password: 'TestPass123',
-    });
+    // Register and login test user
+    await request(app)
+      .post('/api/auth/register')
+      .send({
+        name: 'Test Admin',
+        email: 'testadmin@example.com',
+        password: 'TestPass123',
+        role: 'admin',
+      });
 
-  token = loginRes.body.data.token;
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'testadmin@example.com',
+        password: 'TestPass123',
+      });
+
+    token = loginRes.body.data.token;
+  } catch (error) {
+    console.error('beforeAll error:', error.message);
+    throw error;
+  }
 });
 
 afterAll(async () => {
-  await Customer.deleteMany({ email: /testcustomer/ });
-  await User.deleteMany({ email: /testadmin/ });
-  await mongoose.connection.close();
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await Customer.deleteMany({ email: /testcustomer/ });
+      await User.deleteMany({ email: /testadmin/ });
+    }
+    // jest.setup.js handles connection close
+  } catch (error) {
+    console.error('Cleanup error:', error.message);
+  }
 });
 
 describe('Customer Routes', () => {

@@ -6,9 +6,8 @@ const { startChurnRefresh } = require('./utils/churnRefresh');
 
 dotenv.config();
 
-//const app = express();
-const app = require('./app');
-// Middleware
+
+const app = express();// Middleware
 app.use(cors());
 app.use(express.json());
 

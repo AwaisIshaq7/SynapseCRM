@@ -3,15 +3,27 @@ const mongoose = require('mongoose');
 const app = require('../app');
 const User = require('../models/User');
 
-const MONGO_URI = process.env.MONGO_URI;
+// MongoDB connection is handled by jest.setup.js
 
+// Clean up before tests run
 beforeAll(async () => {
-  await mongoose.connect(MONGO_URI);
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await User.deleteMany({ email: /testuser/ });
+    }
+  } catch (error) {
+    console.error('beforeAll cleanup error:', error.message);
+  }
 });
 
 afterAll(async () => {
-  await User.deleteMany({ email: /testuser/ });
-  await mongoose.connection.close();
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await User.deleteMany({ email: /testuser/ });
+    }
+  } catch (error) {
+    console.error('Cleanup error:', error.message);
+  }
 });
 
 describe('Auth Routes', () => {
