@@ -1,13 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import sys
-import os
-
-# Add src directory to path so imports work
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-
-from sentiment import analyze_sentiment
-from churn import calculate_churn_risk
+from src.sentiment import analyze_sentiment
+from src.churn import calculate_churn_risk
 
 app = Flask(__name__)
 CORS(app)  # Allow requests from Node.js backend
@@ -76,6 +70,4 @@ def churn_risk():
 
 
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app.run(host='0.0.0.0', port=8000, debug=True)

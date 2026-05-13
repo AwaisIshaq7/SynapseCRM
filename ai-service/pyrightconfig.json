@@ -1,0 +1,8 @@
+{
+  "pythonVersion": "3.9",
+  "pythonPlatform": "Windows",
+  "typeCheckingMode": "basic",
+  "extraPaths": ["./src"],
+  "include": ["src"],
+  "exclude": ["**/__pycache__", "**/node_modules"]
+}
