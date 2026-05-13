@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Logo from '../components/Logo'
+import AnimatedAuthBackground from '../components/AnimatedAuthBackground'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
 
 export default function RegisterPage() {
@@ -54,21 +55,26 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-950 px-4 py-6 text-white sm:px-6 lg:px-8">
-      <div className="auth-orb h-72 w-72 bg-brand-500/30 animate-float" style={{ left: '-8rem', top: '-5rem' }} aria-hidden="true" />
-      <div className="auth-orb h-80 w-80 bg-emerald-400/15 animate-drift" style={{ right: '-6rem', bottom: '-5rem' }} aria-hidden="true" />
-      <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.94),rgba(15,23,42,0.84)_50%,rgba(37,99,235,0.16)_100%)]" aria-hidden="true" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.2),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.14),transparent_28%)]" aria-hidden="true" />
+    <div className="relative min-h-screen overflow-hidden bg-slate-50 px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
+      {/* Animated background with particles and gradient */}
+      <AnimatedAuthBackground />
+
+      {/* Light-mode gradient orbs */}
+      <div className="auth-orb h-72 w-72 bg-brand-400/10 animate-float" style={{ left: '-8rem', top: '-5rem' }} aria-hidden="true" />
+      <div className="auth-orb h-80 w-80 bg-emerald-400/10 animate-drift" style={{ right: '-6rem', bottom: '-5rem' }} aria-hidden="true" />
+      {/* Light gradient backdrop layers */}
+      <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.92),rgba(248,250,252,0.90)_50%,rgba(219,234,254,0.30)_100%)]" aria-hidden="true" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.10),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.08),transparent_28%)]" aria-hidden="true" />
 
       <div className="relative mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-7xl items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="hidden lg:flex lg:flex-col lg:gap-6">
           <Logo size="normal" />
-          <div className="max-w-xl border border-white/10 bg-white/5 p-8 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.85)] backdrop-blur" style={{ borderRadius: '2rem' }}>
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-300">Create your workspace</p>
-            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-white">
+          <div className="max-w-xl border border-slate-200 bg-white/85 p-8 shadow-[0_30px_80px_-50px_rgba(15,23,42,0.2)] backdrop-blur" style={{ borderRadius: '2rem' }}>
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-slate-600">Create your workspace</p>
+            <h1 className="mt-4 text-4xl font-semibold tracking-tight text-slate-900">
               Launch a secure, modern CRM workspace in minutes.
             </h1>
-            <p className="mt-4 text-lg leading-8 text-slate-300">
+            <p className="mt-4 text-lg leading-8 text-slate-600">
               Create an account to access dashboards, customer management, analytics, and operational tools designed for enterprise workflows.
             </p>
             <div className="mt-8 grid gap-4 sm:grid-cols-2">
@@ -76,9 +82,9 @@ export default function RegisterPage() {
                 ['Role aware', 'Admin and sales manager access with tailored screens.'],
                 ['Production ready', 'Authentication, persistence, and polished UI patterns.'],
               ].map(([title, description]) => (
-                <div key={title} className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="font-semibold text-white">{title}</p>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">{description}</p>
+                <div key={title} className="rounded-2xl border border-slate-200 bg-white/80 p-4">
+                  <p className="font-semibold text-slate-900">{title}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
                 </div>
               ))}
             </div>
@@ -86,7 +92,7 @@ export default function RegisterPage() {
         </section>
 
         <section className="mx-auto w-full max-w-md">
-          <div className="auth-panel p-6 text-slate-900 shadow-[0_35px_90px_-50px_rgba(15,23,42,0.9)] sm:p-8 dark:text-slate-100">
+          <div className="auth-panel p-6 text-slate-900 shadow-[0_35px_90px_-50px_rgba(15,23,42,0.2)] sm:p-8 dark:text-slate-100">
             <div className="relative">
               <div className="mb-8 flex items-center gap-3">
                 <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-600 shadow-[0_18px_35px_-18px_rgba(37,99,235,0.9)]">

@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './hooks/useAuth'
 import LoadingSpinner from './components/LoadingSpinner'
@@ -5,16 +6,16 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Layout from './components/Layout'
 
 // Pages
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-import DashboardPage from './pages/DashboardPage'
-import CustomerListPage from './pages/CustomerListPage'
-import CustomerDetailPage from './pages/CustomerDetailPage'
-import CustomerFormPage from './pages/CustomerFormPage'
-import ReportsPage from './pages/ReportsPage'
-import UserManagementPage from './pages/UserManagementPage'
-import SettingsPage from './pages/SettingsPage'
-import NotFoundPage from './pages/NotFoundPage'
+const LoginPage = lazy(() => import('./pages/LoginPage'))
+const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const DashboardPage = lazy(() => import('./pages/DashboardPage'))
+const CustomerListPage = lazy(() => import('./pages/CustomerListPage'))
+const CustomerDetailPage = lazy(() => import('./pages/CustomerDetailPage'))
+const CustomerFormPage = lazy(() => import('./pages/CustomerFormPage'))
+const ReportsPage = lazy(() => import('./pages/ReportsPage'))
+const UserManagementPage = lazy(() => import('./pages/UserManagementPage'))
+const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 export default function App() {
   const { loading, user } = useAuth()
@@ -34,7 +35,14 @@ export default function App() {
   }
 
   return (
-    <Routes>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+          <LoadingSpinner size="lg" />
+        </div>
+      }
+    >
+      <Routes>
       {/* Public routes */}
       <Route
         path="/login"
@@ -68,6 +76,7 @@ export default function App() {
 
       {/* 404 */}
       <Route path="*" element={<NotFoundPage />} />
-    </Routes>
+      </Routes>
+    </Suspense>
   )
 }

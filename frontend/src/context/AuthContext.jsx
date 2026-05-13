@@ -35,11 +35,13 @@ export function AuthProvider({ children }) {
   const initialUser = storedUser?.id === 'demo-user' ? null : storedUser
   const [user, setUser]       = useState(initialUser)
   const [token, setToken]     = useState(null)
+  const [theme, setTheme]     = useState('light')
   const [loading, setLoading] = useState(true) // true until we verify token
 
-  const applyTheme = useCallback((theme) => {
-    applyThemeToDocument(theme)
-    storage.setTheme(theme)
+  const applyTheme = useCallback((nextTheme) => {
+    applyThemeToDocument(nextTheme)
+    storage.setTheme(nextTheme)
+    setTheme(nextTheme)
   }, [])
 
   // On mount — verify stored token is still valid
@@ -57,6 +59,8 @@ export function AuthProvider({ children }) {
 
       const storedToken = storage.getToken()
       if (!storedToken) {
+        setTheme('light')
+        applyThemeToDocument('light')
         setLoading(false)
         return
       }
@@ -65,12 +69,15 @@ export function AuthProvider({ children }) {
         if (res.data.success) {
           setUser(res.data.data)
           storage.setUser(res.data.data)
+          setTheme(res.data.data?.preferences?.theme || storage.getTheme() || 'light')
         }
       } catch {
         // Token invalid — clear everything
         storage.clearAll()
         setUser(null)
         setToken(null)
+        setTheme('light')
+        applyThemeToDocument('light')
       } finally {
         setLoading(false)
       }
@@ -78,11 +85,14 @@ export function AuthProvider({ children }) {
     verifyToken()
   }, [])
 
-  // Apply dark/light theme from user preferences
   useEffect(() => {
-    const theme = user?.preferences?.theme || storage.getTheme() || 'light'
-    applyTheme(theme)
-  }, [user, applyTheme])
+    const nextTheme = user?.preferences?.theme || (user ? storage.getTheme() : 'light') || 'light'
+    applyThemeToDocument(nextTheme)
+    if (user) {
+      storage.setTheme(nextTheme)
+    }
+    setTheme(nextTheme)
+  }, [user])
 
   const login = useCallback(async (credentials) => {
     // if (DEMO_MODE) {
@@ -97,6 +107,7 @@ export function AuthProvider({ children }) {
       storage.setUser(newUser)
       setToken(newToken)
       setUser(newUser)
+      setTheme(newUser?.preferences?.theme || storage.getTheme() || 'light')
       return { success: true }
     }
     return { success: false, error: res.data.error }
@@ -115,6 +126,7 @@ export function AuthProvider({ children }) {
       storage.setUser(newUser)
       setToken(newToken)
       setUser(newUser)
+      setTheme(newUser?.preferences?.theme || storage.getTheme() || 'light')
       return { success: true }
     }
     return { success: false, error: res.data.error }
@@ -129,6 +141,8 @@ export function AuthProvider({ children }) {
     storage.clearAll()
     setUser(null)
     setToken(null)
+    setTheme('light')
+    applyThemeToDocument('light')
   }, [])
 
   const updateUserPreferences = useCallback((prefs) => {
@@ -140,10 +154,10 @@ export function AuthProvider({ children }) {
 
   const loginAsDemo = useCallback(() => {
     createDemoSession(setUser, setToken)
+    setTheme(DEMO_USER.preferences.theme)
+    applyThemeToDocument(DEMO_USER.preferences.theme)
     return { success: true }
   }, [])
-
-  const theme = user?.preferences?.theme || storage.getTheme() || 'light'
 
   const toggleTheme = useCallback(() => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark'

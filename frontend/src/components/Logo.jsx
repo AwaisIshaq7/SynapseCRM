@@ -5,7 +5,7 @@
 export default function Logo({ size = 'normal', className = '' }) {
   const sizeMap = {
     small: { width: 160, height: 60, viewBox: '0 0 540 150' },
-    normal: { width: 250, height: 90, viewBox: '0 0 540 150' },
+    normal: { width: 300, height: 80, viewBox: '0 0 540 150' },
     large: { width: 220, height: 70, viewBox: '0 0 540 150' },
   };
 
@@ -65,7 +65,7 @@ export default function Logo({ size = 'normal', className = '' }) {
       </defs>
 
       {/* Background */}
-      <rect width="540" height="150" rx="28" fill="#070B14" className="dark:fill-slate-950" />
+      <rect width="540" height="0" rx="28" fill="#070B14" className="light:fill-slate-950" />
 
       {/* Floating glow circles */}
       <circle cx="480" cy="35" r="40" fill="#8B5CF6" opacity="0.08">
@@ -77,20 +77,20 @@ export default function Logo({ size = 'normal', className = '' }) {
       </circle>
 
       {/* Neural icon */}
-      <g transform="translate(38,34)" filter="url(#shadow)">
+      <g transform="translate(32,34)" filter="url(#shadow)">
         {/* Connection lines */}
         <path
           d="M30 40 L70 15 L110 40 L70 65 Z"
           stroke="url(#luxGradient)"
-          strokeWidth="4"
-          strokeLinecap="round"
+          strokeWidth="3"
+          strokeLinecap="circle"
           fill="none"
           opacity="0.95"
         >
           <animate
             attributeName="strokeDasharray"
             values="0,280;280,0"
-            dur="2s"
+            dur="10s"
             repeatCount="indefinite"
           />
         </path>
@@ -114,8 +114,8 @@ export default function Logo({ size = 'normal', className = '' }) {
 
         {/* Center pulse */}
         <circle cx="70" cy="40" r="5" fill="#F8FAFC">
-          <animate attributeName="r" values="5;15;5" dur="1.6s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.9;0.2;0.9" dur="1.6s" repeatCount="indefinite" />
+          <animate attributeName="r" values="5;15;5" dur="1s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.5;0.1;0.5" dur="4.6s" repeatCount="indefinite" />
         </circle>
       </g>
 
