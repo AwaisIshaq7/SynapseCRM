@@ -17,8 +17,8 @@ export default function StatCard({
   return (
     <div
       className={clsx(
-        'card group transition-all duration-200 hover:shadow-lg',
-        onClick && 'cursor-pointer hover:-translate-y-1'
+        'card group transition-all duration-700 ease-out hover:shadow-2xl',
+        onClick && 'cursor-pointer hover:-translate-y-2'
       )}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
@@ -47,7 +47,7 @@ export default function StatCard({
           )}
         </div>
         {icon && (
-          <div className={clsx('p-3 rounded-xl transition-all duration-200 group-hover:scale-110', colorClass)}>
+          <div className={clsx('p-3 rounded-xl transition-all duration-700 ease-out group-hover:scale-125', colorClass)}>
             {icon}
           </div>
         )}

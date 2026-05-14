@@ -114,3 +114,36 @@ exports.deleteCustomer = async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 };
+
+// GET /api/customers/search - Global search
+exports.searchCustomers = async (req, res) => {
+  try {
+    const { q, limit = 10 } = req.query;
+
+    if (!q || q.length < 2) {
+      return res.json({ success: true, data: [] });
+    }
+
+    let filter = {
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } },
+        { company: { $regex: q, $options: 'i' } },
+      ],
+    };
+
+    // sales_manager only sees their assigned customers
+    if (req.user.role === 'sales_manager') {
+      filter.assignedTo = req.user._id;
+    }
+
+    const customers = await Customer.find(filter)
+      .limit(parseInt(limit))
+      .select('_id name email company churnScore')
+      .sort({ name: 1 });
+
+    res.json({ success: true, data: customers });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};

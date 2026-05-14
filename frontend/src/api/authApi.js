@@ -9,4 +9,7 @@ export const authApi = {
 
   getMe: () =>
     axiosInstance.get('/auth/me'),
+
+  updatePreferences: (prefs) =>
+    axiosInstance.put('/users/preferences', prefs),
 }

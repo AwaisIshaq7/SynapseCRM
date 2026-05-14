@@ -14,7 +14,7 @@ export default function CustomerCard({ customer }) {
   return (
     <Link
       to={`/customers/${customer._id}`}
-      className="card block hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
+      className="card block hover:shadow-2xl hover:-translate-y-2 transition-all duration-700 ease-out group"
       aria-label={`View details for ${customer.name}`}
     >
       {/* Header row */}
@@ -27,7 +27,7 @@ export default function CustomerCard({ customer }) {
             </span>
           </div>
           <div>
-            <p className="font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+            <p className="font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors duration-500 ease-out">
               {customer.name}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">{customer.company}</p>

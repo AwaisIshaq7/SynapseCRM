@@ -5,11 +5,13 @@ exports.updatePreferences = async (req, res) => {
   try {
     const { theme, widgetOrder } = req.body;
 
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      { preferences: { theme, widgetOrder } },
-      { new: true, runValidators: true }
-    );
+    const user = await User.findById(req.user._id);
+    
+    // Merge preferences instead of replacing
+    if (theme !== undefined) user.preferences.theme = theme;
+    if (widgetOrder !== undefined) user.preferences.widgetOrder = widgetOrder;
+    
+    await user.save({ validateBeforeSave: true });
 
     res.status(200).json({
       success: true,

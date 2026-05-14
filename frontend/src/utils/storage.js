@@ -16,9 +16,11 @@ export const storage = {
 
   getTheme:    ()        => localStorage.getItem(THEME_KEY) || 'light',
   setTheme:    (theme)   => localStorage.setItem(THEME_KEY, theme),
+  removeTheme: ()        => localStorage.removeItem(THEME_KEY),
 
   clearAll:    ()        => {
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+    // Note: Theme is NOT cleared so user preference persists across sessions
   }
 }

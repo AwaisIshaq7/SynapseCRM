@@ -21,11 +21,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Suppress Werkzeug development server warning (it's expected when using flask run)
-logging.getLogger('werkzeug').setLevel(logging.ERROR)
-
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # Allow requests from Node.js backend
 
 # ========================================
 # Redis Cache Setup (Optional)
@@ -45,6 +42,41 @@ if CACHE_ENABLED:
         redis_client = None
         CACHE_ENABLED = False
 
+# ========================================
+# Performance Monitoring Decorator
+# ========================================
+def monitor_performance(func_name):
+    """Decorator to log API performance metrics"""
+    def decorator(f):
+        @wraps(f)
+        def wrapper(*args, **kwargs):
+            start_time = time.time()
+            start_memory = None
+            
+            try:
+                result = f(*args, **kwargs)
+                duration_ms = (time.time() - start_time) * 1000
+                
+                logger.info(
+                    f"📊 {func_name} | Duration: {duration_ms:.2f}ms | "
+                    f"Status: 200"
+                )
+                
+                return result
+            except Exception as e:
+                duration_ms = (time.time() - start_time) * 1000
+                logger.error(
+                    f"❌ {func_name} | Duration: {duration_ms:.2f}ms | "
+                    f"Error: {str(e)}"
+                )
+                raise
+        
+        return wrapper
+    return decorator
+
+# ========================================
+# Cache Helper Functions
+# ========================================
 def get_cache_key(prefix, data):
     """Generate a cache key from text data"""
     data_str = json.dumps(data, sort_keys=True)
@@ -56,18 +88,24 @@ def get_from_cache(key):
         return None
     try:
         value = redis_client.get(key)
-        return json.loads(value) if value else None
-    except:
+        if value:
+            logger.debug(f"✅ Cache HIT: {key}")
+            return json.loads(value)
+        logger.debug(f"⚠️ Cache MISS: {key}")
+        return None
+    except Exception as e:
+        logger.warning(f"Cache retrieval error: {e}")
         return None
 
 def set_cache(key, value, ttl=300):
-    """Store value in Redis cache with TTL"""
+    """Store value in Redis cache with TTL (default 5 minutes)"""
     if not redis_client or not CACHE_ENABLED:
         return
     try:
         redis_client.setex(key, ttl, json.dumps(value))
-    except:
-        pass
+        logger.debug(f"💾 Cached: {key} (TTL: {ttl}s)")
+    except Exception as e:
+        logger.warning(f"Cache storage error: {e}")
 
 # ========================================
 # Health Check
@@ -84,13 +122,17 @@ def health():
 
 # ========================================
 # Sentiment Analysis with Caching
+# POST /analyze
+# Body: { "text": "string" }
 # ========================================
 @app.route('/analyze', methods=['POST'])
+@monitor_performance('POST /analyze')
 def analyze():
     try:
         data = request.get_json()
 
         if not data or 'text' not in data:
+            logger.warning("Analyze request missing 'text' field")
             return jsonify({"error": "Missing 'text' field in request body"}), 400
 
         text = data['text']
@@ -101,19 +143,23 @@ def analyze():
         if cached_result:
             return jsonify(cached_result), 200
         
-        # Analyze and cache
+        # If not in cache, analyze and cache result
         result = analyze_sentiment(text)
-        set_cache(cache_key, result, ttl=300)
+        set_cache(cache_key, result, ttl=300)  # 5 minute TTL
         
         return jsonify(result), 200
 
     except Exception as e:
+        logger.error(f"Analyze error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # ========================================
-# Churn Risk Prediction
+# Churn Risk Prediction (No caching - real-time features)
+# POST /churn-risk
+# Body: { daysSinceLastContact, avgSentimentScore, interactionCount, interactionFrequency }
 # ========================================
 @app.route('/churn-risk', methods=['POST'])
+@monitor_performance('POST /churn-risk')
 def churn_risk():
     try:
         data = request.get_json()
@@ -121,6 +167,7 @@ def churn_risk():
         required_fields = ['daysSinceLastContact', 'avgSentimentScore', 'interactionCount', 'interactionFrequency']
         for field in required_fields:
             if field not in data:
+                logger.warning(f"Churn-risk request missing '{field}' field")
                 return jsonify({"error": f"Missing field: {field}"}), 400
 
         result = calculate_churn_risk(
@@ -133,13 +180,15 @@ def churn_risk():
         return jsonify(result), 200
 
     except Exception as e:
+        logger.error(f"Churn-risk error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # ========================================
-# Cache Statistics
+# Cache Statistics Endpoint
 # ========================================
 @app.route('/cache-stats', methods=['GET'])
 def cache_stats():
+    """Get cache statistics and performance metrics"""
     if not redis_client or not CACHE_ENABLED:
         return jsonify({
             "status": "disabled",
@@ -159,13 +208,16 @@ def cache_stats():
             "evicted_keys": info.get('evicted_keys', 0)
         }), 200
     except Exception as e:
+        logger.error(f"Cache stats error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # ========================================
-# Service Stats
+# Sentiment Analysis Performance Endpoint
+# GET /stats
 # ========================================
 @app.route('/stats', methods=['GET'])
 def stats():
+    """Get service performance statistics"""
     return jsonify({
         "status": "ok",
         "service": "SynapseCRM AI Microservice",
@@ -183,7 +235,31 @@ def stats():
         }
     }), 200
 
+# ========================================
+# Request/Response Logging Middleware
+# ========================================
+@app.before_request
+def log_request():
+    """Log incoming requests"""
+    if request.endpoint not in ['health', 'stats', 'cache_stats']:
+        logger.info(
+            f"📥 {request.method} {request.path} | "
+            f"Content-Length: {request.content_length or 0}"
+        )
+
+@app.after_request
+def log_response(response):
+    """Log outgoing responses"""
+    if request.endpoint not in ['health', 'stats', 'cache_stats']:
+        logger.info(
+            f"📤 {request.method} {request.path} | "
+            f"Status: {response.status_code} | "
+            f"Response-Length: {len(response.get_data())}"
+        )
+    return response
+
 if __name__ == '__main__':
+    import os
     port = int(os.environ.get('PORT', 8000))
     debug = os.environ.get('DEBUG', 'false').lower() == 'true'
     

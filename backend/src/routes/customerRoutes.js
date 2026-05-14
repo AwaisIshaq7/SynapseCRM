@@ -6,12 +6,14 @@ const {
   createCustomer,
   updateCustomer,
   deleteCustomer,
+  searchCustomers,
 } = require('../controllers/customerController');
 const { protect, authorize } = require('../middleware/auth');
 
 // All routes below require login
 router.use(protect);
 
+router.get('/search', searchCustomers);
 router.get('/', getCustomers);
 router.post('/', createCustomer);
 router.get('/:id', getCustomer);

@@ -35,8 +35,19 @@ export function AuthProvider({ children }) {
   const initialUser = storedUser?.id === 'demo-user' ? null : storedUser
   const [user, setUser]       = useState(initialUser)
   const [token, setToken]     = useState(null)
-  const [theme, setTheme]     = useState('light')
+  // Initialize theme from localStorage, but only apply if user is authenticated
+  const [theme, setTheme]     = useState(storage.getTheme())
   const [loading, setLoading] = useState(true) // true until we verify token
+
+  // Apply theme to document only when user is authenticated (not on login/register pages)
+  useEffect(() => {
+    if (user) {
+      applyThemeToDocument(theme)
+    } else {
+      // Keep login/register pages in light mode
+      applyThemeToDocument('light')
+    }
+  }, [theme, user])
 
   const applyTheme = useCallback((nextTheme) => {
     applyThemeToDocument(nextTheme)
@@ -59,8 +70,7 @@ export function AuthProvider({ children }) {
 
       const storedToken = storage.getToken()
       if (!storedToken) {
-        setTheme('light')
-        applyThemeToDocument('light')
+        // No token - theme already applied from localStorage via state init
         setLoading(false)
         return
       }
@@ -69,15 +79,20 @@ export function AuthProvider({ children }) {
         if (res.data.success) {
           setUser(res.data.data)
           storage.setUser(res.data.data)
-          setTheme(res.data.data?.preferences?.theme || storage.getTheme() || 'light')
+          // Sync theme from backend user preferences (if available)
+          const userTheme = res.data.data?.preferences?.theme
+          if (userTheme) {
+            applyTheme(userTheme)
+          }
         }
       } catch {
         // Token invalid — clear everything
         storage.clearAll()
         setUser(null)
         setToken(null)
-        setTheme('light')
-        applyThemeToDocument('light')
+        // Keep the stored theme preference even after logout
+        const storedTheme = storage.getTheme()
+        setTheme(storedTheme)
       } finally {
         setLoading(false)
       }
@@ -85,14 +100,12 @@ export function AuthProvider({ children }) {
     verifyToken()
   }, [])
 
+  // When user preferences change, sync theme to storage
   useEffect(() => {
-    const nextTheme = user?.preferences?.theme || (user ? storage.getTheme() : 'light') || 'light'
-    applyThemeToDocument(nextTheme)
-    if (user) {
-      storage.setTheme(nextTheme)
+    if (user?.preferences?.theme) {
+      storage.setTheme(user.preferences.theme)
     }
-    setTheme(nextTheme)
-  }, [user])
+  }, [user?.preferences?.theme])
 
   const login = useCallback(async (credentials) => {
     // if (DEMO_MODE) {
@@ -107,11 +120,13 @@ export function AuthProvider({ children }) {
       storage.setUser(newUser)
       setToken(newToken)
       setUser(newUser)
-      setTheme(newUser?.preferences?.theme || storage.getTheme() || 'light')
+      // Apply theme from user preferences or fallback to stored theme
+      const userTheme = newUser?.preferences?.theme || storage.getTheme()
+      applyTheme(userTheme)
       return { success: true }
     }
     return { success: false, error: res.data.error }
-  }, [])
+  }, [applyTheme])
 
   const register = useCallback(async (userData) => {
     if (DEMO_MODE) {
@@ -126,11 +141,13 @@ export function AuthProvider({ children }) {
       storage.setUser(newUser)
       setToken(newToken)
       setUser(newUser)
-      setTheme(newUser?.preferences?.theme || storage.getTheme() || 'light')
+      // Apply theme from user preferences or fallback to stored theme
+      const userTheme = newUser?.preferences?.theme || storage.getTheme()
+      applyTheme(userTheme)
       return { success: true }
     }
     return { success: false, error: res.data.error }
-  }, [])
+  }, [applyTheme])
 
   const logout = useCallback(() => {
     if (DEMO_MODE) {
@@ -141,23 +158,37 @@ export function AuthProvider({ children }) {
     storage.clearAll()
     setUser(null)
     setToken(null)
-    setTheme('light')
-    applyThemeToDocument('light')
+    // Preserve user's theme preference even after logout
+    const storedTheme = storage.getTheme()
+    setTheme(storedTheme)
   }, [])
 
-  const updateUserPreferences = useCallback((prefs) => {
-    const updated = { ...user, preferences: { ...user?.preferences, ...prefs } }
-    setUser(updated)
-    storage.setUser(updated)
-    if (prefs.theme) applyTheme(prefs.theme)
+  const updateUserPreferences = useCallback(async (prefs) => {
+    try {
+      // Update local state immediately
+      const updated = { ...user, preferences: { ...user?.preferences, ...prefs } }
+      setUser(updated)
+      storage.setUser(updated)
+      
+      // Apply theme immediately if changing
+      if (prefs.theme) {
+        applyTheme(prefs.theme)
+      }
+      
+      // Sync with backend (fire and forget with error handling)
+      const res = await authApi.updatePreferences(prefs)
+      if (res.data.success) {
+        // Backend confirmed - update stored user with backend response
+        const updated = { ...user, preferences: { ...user?.preferences, ...res.data.data } }
+        storage.setUser(updated)
+      }
+    } catch (err) {
+      console.error('Failed to update preferences:', err)
+      // Preferences still applied locally, just log the backend error
+    }
   }, [user, applyTheme])
 
-  const loginAsDemo = useCallback(() => {
-    createDemoSession(setUser, setToken)
-    setTheme(DEMO_USER.preferences.theme)
-    applyThemeToDocument(DEMO_USER.preferences.theme)
-    return { success: true }
-  }, [])
+
 
   const toggleTheme = useCallback(() => {
     const nextTheme = theme === 'dark' ? 'light' : 'dark'
@@ -176,7 +207,6 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
-      loginAsDemo,
       isAdmin,
       isSalesManager,
       theme,

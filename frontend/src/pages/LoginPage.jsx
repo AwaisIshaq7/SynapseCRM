@@ -1,32 +1,41 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+//import { useTheme } from '../hooks/useTheme'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
-import Logo from '../components/Logo'
 import AnimatedAuthBackground from '../components/AnimatedAuthBackground'
-import { ArrowRightIcon, ShieldCheckIcon, SparklesIcon } from '@heroicons/react/24/outline'
+import MyCRMLogo from '../assets/MyCRMLOGO.svg'
+import { 
+  Brain, Mail, Lock, Eye, EyeOff, Users, Zap, Shield, 
+  BarChart3, ArrowRight, Sparkles
+} from 'lucide-react'
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: '', password: '' })
-  const [errors,   setErrors]   = useState({})
-  const [loading,  setLoading]  = useState(false)
- 
-  const { login, loginAsDemo } = useAuth()
-  const navigate  = useNavigate()
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [rememberMe, setRememberMe] = useState(false)
+
+  const { login } = useAuth()
+  //const { theme } = useTheme()
+  const navigate = useNavigate()
+  
+  // FORCE LIGHT MODE ON LOGIN PAGE - ignore user preference
+  //const isDark = false // Always false for login page
 
   const validate = () => {
     const errs = {}
-    if (!formData.email)                              errs.email    = 'Email is required'
-    else if (!/\S+@\S+\.\S+/.test(formData.email))   errs.email    = 'Enter a valid email'
-    if (!formData.password)                           errs.password = 'Password is required'
-    else if (formData.password.length < 6)            errs.password = 'Password must be at least 6 characters'
+    if (!formData.email) errs.email = 'Email is required'
+    else if (!/\S+@\S+\.\S+/.test(formData.email)) errs.email = 'Enter a valid email'
+    if (!formData.password) errs.password = 'Password is required'
+    else if (formData.password.length < 6) errs.password = 'Password must be at least 6 characters'
     return errs
   }
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
-    // Clear error on change — Nielsen heuristic: error prevention
     if (errors[e.target.name]) setErrors(prev => ({ ...prev, [e.target.name]: '' }))
   }
 
@@ -47,7 +56,6 @@ export default function LoginPage() {
         toast.error(result.error || 'Login failed. Please check your credentials.')
       }
     } catch (err) {
-      // Handle Render cold start — show friendly message
       if (err.code === 'ECONNABORTED' || err.message?.includes('timeout')) {
         toast.error('Server is waking up (free tier). Please try again in a moment.')
       } else {
@@ -58,211 +66,301 @@ export default function LoginPage() {
     }
   }
 
-  const handleDemoAccess = () => {
-    setErrors({})
-    loginAsDemo()
-    toast.success('Entered demo workspace')
-    navigate('/dashboard', { replace: true })
+  // 4 Core Features for the right side
+  const features = [
+    {
+      icon: Users,
+      title: 'Unified View',
+      description: 'Accounts, activity logs, sentiment analysis, and real-time churn risk signals in one dashboard.',
+      iconColor: 'text-blue-500'
+    },
+    {
+      icon: Zap,
+      title: 'Fast Decisions',
+      description: 'Reduce response time with AI-driven prioritization and instant RAG-powered customer insights.',
+      iconColor: 'text-yellow-500'
+    },
+    {
+      icon: Shield,
+      title: 'Secure Access',
+      description: 'Role-based views for Admin & Sales Manager roles with fully authenticated audit-ready workflows.',
+      iconColor: 'text-green-500'
+    },
+    {
+      icon: Brain,
+      title: 'AI Churn Prediction',
+      description: 'VADER sentiment analysis + Groq Llama 3.3 RAG for proactive customer retention.',
+      iconColor: 'text-purple-500'
+    }
+  ]
+
+  const handleGoogleSSO = () => {
+    window.location.href = '/auth/google'
+  }
+
+  const handleMicrosoftSSO = () => {
+    window.location.href = '/auth/microsoft'
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-slate-100 px-6 py-6 text-slate-900 sm:px-6 lg:px-6">
+    // Force light mode classes - no dark mode variants
+    <div className="relative min-h-screen overflow-hidden bg-white">
+      <AnimatedAuthBackground />
 
-  {/* Animated Background */}
-  <AnimatedAuthBackground />
+      <div className="flex flex-col lg:flex-row min-h-screen">
+        {/* Left Column: Login Form - Light mode only */}
+        <div className="flex-1 flex items-center justify-center p-4 md:p-6 bg-white/50">
+          <div className="w-full max-w-sm">
+            {/* Logo centered above form */}
+            <div className="flex justify-center mb-6">
+              <img 
+                src={MyCRMLogo} 
+                alt="SynapseCRM Logo" 
+                className="h-16 w-auto"
+                style={{ filter: 'brightness(0) saturate(100%) invert(25%) sepia(98%) saturate(3000%) hue-rotate(250deg) brightness(100%) contrast(95%)' }}
+              />
+            </div>
 
-  {/* Main soft backdrop */}
-  <div
-    className="absolute inset-0 bg-linear-to-br from-white via-slate-50 to-blue-100/40"
-    aria-hidden="true"
-  />
-
-  {/* Ambient radial glow */}
-  <div
-    className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.12),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.10),transparent_32%)]"
-    aria-hidden="true"
-  />
-
-  {/* Center cinematic glow */}
-  <div
-    className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(37,99,235,0.08),transparent_70%)]"
-    aria-hidden="true"
-  />
-
-  {/* Floating orbs */}
-  <div
-    className="auth-orb absolute h-80 w-80 rounded-full bg-blue-400/10 blur-3xl animate-float"
-    style={{ left: '-8rem', top: '-6rem' }}
-    aria-hidden="true"
-  />
-
-  <div
-    className="auth-orb absolute h-96 w-96 rounded-full bg-cyan-400/10 blur-3xl animate-drift"
-    style={{ right: '-6rem', top: '12%' }}
-    aria-hidden="true"
-  />
-
-  <div
-    className="auth-orb absolute h-96 w-96 rounded-full bg-emerald-400/10 blur-3xl animate-slow-pulse"
-    style={{ bottom: '-7rem', left: '18%' }}
-    aria-hidden="true"
-  />
-
-  <div
-    className="auth-orb absolute h-72 w-72 rounded-full bg-violet-500/10 blur-3xl animate-float"
-    style={{ right: '5%', bottom: '10%' }}
-    aria-hidden="true"
-  />
-
-  {/* Main content container */}
-  <div className="relative mx-auto grid min-h-[calc(100vh-3rem)] w-full max-w-7xl items-center gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="hidden lg:flex lg:flex-col lg:gap-6">
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-600 backdrop-blur">
-            <SparklesIcon className="h-4 w-4" />
-            Enterprise CRM Platform
-          </div>
-          <div>
-            <h1 className="max-w-xl text-5xl font-semibold tracking-tight text-slate-900 xl:text-6xl" style={{
-              background: 'linear-gradient(135deg, #0f172a 0%, #2563eb 50%, #1d4ed8 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text'
-            }}>
-              Customer intelligence, pipelines, and decisions in one secure workspace.
-            </h1>
-            <p className="mt-5 max-w-xl text-lg leading-8 text-slate-600">
-            </p>
-          </div>
-
-          <div className="grid max-w-xl gap-4 sm:grid-cols-3">
-            {[
-              ['Unified view', 'Accounts, activity, and risk signals in one place.', 'from-blue-500/20 to-cyan-500/10'],
-              ['Fast decisions', 'Shorten response time with clear prioritization.', 'from-purple-500/20 to-blue-500/10'],
-              ['Secure access', 'Role-based screens and authenticated workflows.', 'from-emerald-500/20 to-teal-500/10'],
-            ].map(([title, description, gradient]) => (
-              <div key={title} className={`rounded-2xl border border-slate-200 bg-white/85 bg-linear-to-br ${gradient} p-4 backdrop-blur-sm transition-all hover:border-slate-300 hover:bg-linear-to-br`}>
-                <p className="text-sm font-semibold text-slate-900">{title}</p>
-                <p className="mt-1 text-sm leading-6 text-slate-600">{description}</p>
+            {/* Error Alert - Light mode only */}
+            {Object.keys(errors).length > 0 && (
+              <div className="mb-4 p-3 rounded-xl border border-red-200 bg-red-50 text-red-700">
+                <p className="text-xs font-medium">Please fix the errors below to continue</p>
               </div>
-            ))}
-          </div>
-        </section>
+            )}
 
-        <section className="mx-auto w-full max-w-md lg:max-w-none">
-          <div className="auth-panel p-6 text-slate-900 shadow-[0_35px_90px_-50px_rgba(15,23,42,0.2)] sm:p-8 dark:text-slate-100">
-            {/* Enhanced gradient overlays */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(59,130,246,0.15),transparent_36%),radial-gradient(circle_at_bottom_left,rgba(16,185,129,0.12),transparent_32%)]" aria-hidden="true" />
-            <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(59,130,246,0.03),transparent_100%)]" aria-hidden="true" />
-            <div className="relative">
-              <div className="mb-6 flex flex-col items-center justify-center gap-5">
-                <Logo size="normal" />
-                <div className="hidden rounded-full border border-emerald-200/70 bg-linear-to-r from-emerald-50 to-teal-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-linear-to-r dark:from-emerald-900/30 dark:to-teal-900/20 dark:text-emerald-300 sm:block">
-                  Secure sign in
+            {/* Form Card - Light mode only */}
+            <div className="rounded-2xl shadow-xl overflow-hidden backdrop-blur-xl ring-1 bg-white/70 border border-gray-200/50 ring-gray-200/20">
+              <div className="p-5 md:p-6">
+                {/* Header - Light mode only */}
+                <div className="mb-5 text-center">
+                  <h2 className="text-2xl md:text-3xl font-bold tracking-tight mb-2 bg-linear-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+                    Welcome back
+                  </h2>
+                  <p className="text-xs text-gray-600">
+                    Sign in to your AI-powered workspace
+                  </p>
                 </div>
-              </div>
 
-              <h2 className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">Welcome back</h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-400">Sign in to continue to your customer workspace.</p>
+                <form onSubmit={handleSubmit} noValidate className="space-y-3">
+                  {/* Email Field - Light mode only */}
+                  <div>
+                    <label htmlFor="email" className="block text-xs font-medium mb-1.5 text-gray-700">
+                      Email address
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        id="email"
+                        name="email"
+                        type="email"
+                        autoComplete="email"
+                        value={formData.email}
+                        onChange={handleChange}
+                        placeholder="you@company.com"
+                        disabled={loading}
+                        className={`w-full pl-9 pr-3 py-2 rounded-lg border transition-all text-sm ${
+                          errors.email
+                            ? 'border-red-300 bg-red-50 text-gray-900 placeholder-red-400'
+                            : 'border-gray-300 bg-white/80 text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        aria-invalid={!!errors.email}
+                      />
+                    </div>
+                    {errors.email && (
+                      <p className="mt-1 text-xs font-medium text-red-600" role="alert">
+                        {errors.email}
+                      </p>
+                    )}
+                  </div>
 
-              <form onSubmit={handleSubmit} noValidate aria-label="Login form" className="mt-8 space-y-4">
-                <div>
-                  <label htmlFor="email" className="label">
-                    Email address
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    className={`input ${errors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="you@company.com"
-                    aria-invalid={!!errors.email}
-                    aria-describedby={errors.email ? 'email-error' : undefined}
+                  {/* Password Field - Light mode only */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label htmlFor="password" className="block text-xs font-medium text-gray-700">
+                        Password
+                      </label>
+                      <a href="#" className="text-xs transition-colors text-purple-600 hover:text-purple-700">
+                        Forgot password?
+                      </a>
+                    </div>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        id="password"
+                        name="password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        placeholder="••••••••"
+                        disabled={loading}
+                        className={`w-full pl-9 pr-9 py-2 rounded-lg border transition-all text-sm ${
+                          errors.password
+                            ? 'border-red-300 bg-red-50 text-gray-900 placeholder-red-400'
+                            : 'border-gray-300 bg-white/80 text-gray-900 placeholder-gray-400 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/20'
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        aria-invalid={!!errors.password}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        disabled={loading}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50 transition-colors"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {errors.password && (
+                      <p className="mt-1 text-xs font-medium text-red-600" role="alert">
+                        {errors.password}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Remember Me Checkbox - Light mode only */}
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        disabled={loading}
+                        className="w-3.5 h-3.5 rounded border bg-white border-gray-300 accent-purple-600"
+                      />
+                      <span className="ml-2 text-xs text-gray-600">
+                        Remember me
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Sign In Button - Light mode only */}
+                  <button
+                    type="submit"
                     disabled={loading}
-                  />
-                  {errors.email && (
-                    <p id="email-error" className="mt-1.5 text-xs text-red-600 dark:text-red-400" role="alert">
-                      {errors.email}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label htmlFor="password" className="label">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className={`input ${errors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
-                    placeholder="••••••••"
-                    aria-invalid={!!errors.password}
-                    aria-describedby={errors.password ? 'password-error' : undefined}
-                    disabled={loading}
-                  />
-                  {errors.password && (
-                    <p id="password-error" className="mt-1.5 text-xs text-red-600 dark:text-red-400" role="alert">
-                      {errors.password}
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="btn-primary mt-2 w-full"
-                  aria-live="polite"
-                >
-                  {loading ? (
-                    <>
-                      <LoadingSpinner size="sm" />
-                      <span>Signing in...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Sign in</span>
-                      <ArrowRightIcon className="h-4 w-4" aria-hidden="true" />
-                    </>
-                  )}
-                </button>
-              </form>
-
-              <button
-                type="button"
-                onClick={handleDemoAccess}
-                className="btn-secondary mt-3 w-full"
-              >
-                Open dashboard without login
-              </button>
-
-              <div className="mt-6 flex items-center justify-between gap-4 text-sm">
-                <p className="text-slate-600 dark:text-slate-400">
-                  Don't have an account?{' '}
-                  <Link
-                    to="/register"
-                    className="font-semibold text-brand-700 hover:text-brand-600 dark:text-brand-400 dark:hover:text-brand-300"
+                    className="w-full py-2 px-4 rounded-lg font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 mt-4 shadow-md text-sm bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50"
                   >
-                    Create one
+                    {loading ? (
+                      <>
+                        <LoadingSpinner size="sm" />
+                        <span>Signing in...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Sign in</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Social Login Buttons - Light mode only */}
+                <div className="relative my-4 flex items-center">
+                  <div className="grow border-t border-gray-200"></div>
+                  <span className="px-3 text-xs font-medium text-gray-400">Or continue with</span>
+                  <div className="grow border-t border-gray-200"></div>
+                </div>
+
+                <div className="space-y-2">
+                  <button
+                    onClick={handleGoogleSSO}
+                    disabled={loading}
+                    className="w-full py-2 px-4 rounded-lg border font-medium flex items-center justify-center gap-2 transition-all text-xs border-gray-200 bg-white/80 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 24 24">
+                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continue with Google
+                  </button>
+                  <button
+                    onClick={handleMicrosoftSSO}
+                    disabled={loading}
+                    className="w-full py-2 px-4 rounded-lg border font-medium flex items-center justify-center gap-2 transition-all text-xs border-gray-200 bg-white/80 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    <svg className="w-4 h-4" viewBox="0 0 23 23">
+                      <rect x="1" y="1" width="10" height="10" fill="#F25022"/>
+                      <rect x="12" y="1" width="10" height="10" fill="#7FBA00"/>
+                      <rect x="1" y="12" width="10" height="10" fill="#00A4EF"/>
+                      <rect x="12" y="12" width="10" height="10" fill="#FFB900"/>
+                    </svg>
+                    Continue with Microsoft
+                  </button>
+                </div>
+
+                {/* Sign Up Link - Light mode only */}
+                <p className="mt-5 text-center text-xs text-gray-500">
+                  Don't have an account?{' '}
+                  <Link to="/register" className="font-semibold transition-colors text-purple-600 hover:text-purple-700">
+                    Create free account
                   </Link>
                 </p>
-                <div className="hidden items-center gap-2 rounded-full border border-slate-200/80 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900/50 dark:text-slate-400 md:flex">
-                  <ShieldCheckIcon className="h-4 w-4 text-emerald-500" />
-                  Enterprise security
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Feature Showcase - 4 Cards - Light mode only */}
+        <div className="w-0 lg:w-auto lg:flex-1 flex items-center justify-center p-4 md:p-6 overflow-hidden lg:overflow-visible relative bg-linear-to-br from-purple-50 via-indigo-50 to-blue-50">
+          <div className="w-full max-w-md">
+            {/* Feature Grid Header - Light mode only */}
+            <div className="mb-5 text-center space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 mx-auto mb-3">
+                <Sparkles className="w-3 h-3 text-purple-500" />
+                <span className="text-[10px] font-semibold text-purple-600">AI-Powered Platform</span>
+              </div>
+              <h3 className="text-xl md:text-2xl font-bold bg-linear-to-r from-purple-600 via-pink-600 to-indigo-600 bg-clip-text text-transparent">
+                AI-Driven Customer Intelligence
+              </h3>
+              <p className="text-xs text-gray-600 max-w-md mx-auto">
+                Everything you need to predict, prevent, and act on customer churn.
+              </p>
+            </div>
+
+            {/* 4 Feature Cards - 2x2 Grid - Light mode only */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-stretch mb-5">
+              {features.map((feature, idx) => {
+                const IconComponent = feature.icon
+                return (
+                  <div
+                    key={idx}
+                    className="p-3 rounded-xl border backdrop-blur-md shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md group cursor-default bg-white/60 border-gray-200/60 hover:bg-white/80"
+                  >
+                    <div className="rounded-lg w-8 h-8 flex items-center justify-center mb-2 transition-all duration-300 group-hover:scale-105 bg-white/80">
+                      <IconComponent className={`w-4 h-4 ${feature.iconColor}`} />
+                    </div>
+                    <h4 className="font-semibold text-sm mb-1 text-gray-900">
+                      {feature.title}
+                    </h4>
+                    <p className="text-[11px] leading-relaxed text-gray-600">
+                      {feature.description}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Trust Badges - Light mode only */}
+            <div className="mt-3 pt-3 border-t border-gray-200/60">
+              <div className="flex flex-wrap justify-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className="text-[10px] font-medium text-gray-500">99.9% Uptime</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Shield className="w-3 h-3 text-purple-500" />
+                  <span className="text-[10px] font-medium text-gray-500">SOC 2 Type II</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <BarChart3 className="w-3 h-3 text-purple-500" />
+                  <span className="text-[10px] font-medium text-gray-500">Real-time Analytics</span>
                 </div>
               </div>
             </div>
           </div>
-
-          <p className="mt-5 text-center text-xs font-medium uppercase tracking-[0.2em] text-slate-400">
-             SynapseCRM v1.0
-          </p>
-        </section>
+        </div>
       </div>
     </div>
   )

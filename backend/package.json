@@ -10,8 +10,12 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/__tests__/**/*.test.js"],
-    "setupFilesAfterEnv": ["<rootDir>/jest.setup.js"],
+    "testMatch": [
+      "**/__tests__/**/*.test.js"
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup.js"
+    ],
     "testTimeout": 30000
   },
   "keywords": [],
@@ -31,7 +35,8 @@
     "groq-sdk": "^1.1.2",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.6.1",
-    "node-cron": "^4.2.1"
+    "node-cron": "^4.2.1",
+    "puppeteer": "^24.43.1"
   },
   "devDependencies": {
     "jest": "^30.4.2",

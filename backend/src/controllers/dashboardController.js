@@ -49,24 +49,53 @@ exports.getSummary = async (req, res) => {
   }
 };
 
-// GET /api/dashboard/sentiment-trend?days=7
+// GET /api/dashboard/sentiment-trend?days=7 or ?range=7d or ?from=2024-01-01&to=2024-01-31
 exports.getSentimentTrend = async (req, res) => {
   try {
-    const days = parseInt(req.query.days) || 7;
+    const { range = '7d', from, to, days } = req.query;
 
-    // Build date labels for last N days
+    let startDate, endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+
+    if (from && to) {
+      // Custom date range
+      startDate = new Date(from);
+      startDate.setHours(0, 0, 0, 0);
+      endDate = new Date(to);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (days) {
+      // Legacy support for days parameter
+      const daysNum = parseInt(days);
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysNum);
+      startDate.setHours(0, 0, 0, 0);
+    } else {
+      // Default range support (7d, 14d, 30d, etc.)
+      const rangeMatch = range.match(/^(\d+)d$/);
+      const daysNum = rangeMatch ? parseInt(rangeMatch[1]) : 7;
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysNum);
+      startDate.setHours(0, 0, 0, 0);
+    }
+
+    // Calculate number of days for labels
+    const diffTime = Math.abs(endDate - startDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    // Build date labels and aggregate data
     const labels = [];
     const positiveData = [];
     const neutralData = [];
     const negativeData = [];
 
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
+    for (let i = 0; i < diffDays; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
       date.setHours(0, 0, 0, 0);
 
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
+      nextDate.setHours(0, 0, 0, 0);
 
       // Format label as "Apr 25"
       const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -131,5 +160,51 @@ exports.getChurnDistribution = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET /api/dashboard/trends - KPI Trends
+exports.getKPITrends = async (req, res) => {
+  try {
+    let customerFilter = {};
+    if (req.user.role === 'sales_manager') {
+      customerFilter.assignedTo = req.user._id;
+    }
+
+    // Get current period counts
+    const currentTotal = await Customer.countDocuments(customerFilter);
+    const currentAtRisk = await Customer.countDocuments({ ...customerFilter, churnScore: { $gt: 0.6 } });
+    const currentPositive = await Interaction.countDocuments({ sentimentLabel: 'positive' });
+    const currentNegative = await Interaction.countDocuments({ sentimentLabel: 'negative' });
+
+    // Get previous period (7 days ago)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const previousTotal = await Customer.countDocuments({ ...customerFilter, createdAt: { $lt: sevenDaysAgo } });
+    const previousAtRisk = await Customer.countDocuments({
+      ...customerFilter,
+      churnScore: { $gt: 0.6 },
+      updatedAt: { $lt: sevenDaysAgo },
+    });
+    const previousPositive = await Interaction.countDocuments({ sentimentLabel: 'positive', createdAt: { $lt: sevenDaysAgo } });
+    const previousNegative = await Interaction.countDocuments({ sentimentLabel: 'negative', createdAt: { $lt: sevenDaysAgo } });
+
+    const calculateTrend = (current, previous) => {
+      if (previous === 0) return 0;
+      return Number(((current - previous) / previous * 100).toFixed(1));
+    };
+
+    res.json({
+      success: true,
+      data: {
+        totalCustomers: calculateTrend(currentTotal, previousTotal),
+        atRiskCount: calculateTrend(currentAtRisk, previousAtRisk),
+        positiveSentiment: calculateTrend(currentPositive, previousPositive),
+        negativeSentiment: calculateTrend(currentNegative, previousNegative),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 };
