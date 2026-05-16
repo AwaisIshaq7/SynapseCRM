@@ -7,21 +7,35 @@ dotenv.config();
 
 const app = express();
 
-// CORS — allow local dev and Vercel production
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://synapsecrm.vercel.app',
-  ],
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://localhost:3000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'http://127.0.0.1:3000',
+  'https://synapsecrm.vercel.app',
+];
+
+const extraOrigins = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const corsOptions = {
+  origin: [...allowedOrigins, ...extraOrigins],
   credentials: true,
-}));
+};
+
+// CORS — allow local dev and Vercel production
+app.use(cors(corsOptions));
 
 app.use(express.json());
 
 // ✅ Performance Monitoring Middleware (tracks all requests)
 app.use(performanceMonitor());
 
+// Routes
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/customers', require('./routes/customerRoutes'));

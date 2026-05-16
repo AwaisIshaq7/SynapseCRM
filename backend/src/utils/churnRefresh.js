@@ -1,7 +1,9 @@
 const cron = require('node-cron');
 const Customer = require('../models/Customer');
 const Interaction = require('../models/Interaction');
+const User = require('../models/User');
 const axios = require('axios');
+const { sendChurnAlert } = require('./emailService');
 
 const refreshAllChurnScores = async () => {
   try {
@@ -59,6 +61,18 @@ const refreshAllChurnScores = async () => {
           churnScore,
           status: newStatus,
         });
+
+        if (churnScore >= 0.7 && customer.churnScore < 0.7) {
+          const manager = await User.findById(customer.assignedTo).select('name email');
+          if (manager) {
+            await sendChurnAlert(
+              manager.email,
+              manager.name,
+              customer.name,
+              churnScore
+            );
+          }
+        }
 
         console.log(`✅ ${customer.name}: churnScore=${churnScore}, risk=${riskLevel}`);
 

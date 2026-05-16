@@ -8,6 +8,8 @@ import Layout from './components/Layout'
 // Pages
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
+const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
+const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
 const DashboardPage = lazy(() => import('./pages/DashboardPage'))
 const CustomerListPage = lazy(() => import('./pages/CustomerListPage'))
 const CustomerDetailPage = lazy(() => import('./pages/CustomerDetailPage'))
@@ -51,6 +53,14 @@ export default function App() {
       <Route
         path="/register"
         element={user ? <Navigate to="/dashboard" replace /> : <RegisterPage />}
+      />
+      <Route
+        path="/forgot-password"
+        element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />}
+      />
+      <Route
+        path="/reset-password/:token"
+        element={user ? <Navigate to="/dashboard" replace /> : <ResetPasswordPage />}
       />
 
       {/* Protected routes — require authentication */}

@@ -42,11 +42,20 @@ function performanceMonitor() {
     const startTime = Date.now();
     const startHrTime = process.hrtime();
     
+    // Flag to prevent double processing
+    let alreadyLogged = false;
+    
     // Store original end function
     const originalEnd = res.end;
     
     // Override end function to capture when response is sent
     res.end = function(...args) {
+      // Prevent double logging if end is called multiple times
+      if (alreadyLogged) {
+        return originalEnd.apply(res, args);
+      }
+      alreadyLogged = true;
+      
       // Calculate performance metrics
       const endHrTime = process.hrtime(startHrTime);
       const durationMs = (endHrTime[0] * 1000) + (endHrTime[1] / 1000000);
@@ -105,7 +114,7 @@ function performanceMonitor() {
       }
       
       // Call original end
-      originalEnd.apply(res, args);
+      return originalEnd.apply(res, args);
     };
     
     next();

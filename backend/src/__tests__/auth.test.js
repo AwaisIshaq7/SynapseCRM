@@ -135,4 +135,39 @@ describe('Auth Routes', () => {
     });
   });
 
+  describe('POST /api/auth/forgot-password and reset-password', () => {
+    it('should generate a reset token and allow password reset', async () => {
+      const forgotRes = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: 'testuser1@example.com' });
+
+      expect(forgotRes.statusCode).toBe(200);
+      expect(forgotRes.body.success).toBe(true);
+      expect(forgotRes.body.data).toHaveProperty('resetToken');
+      expect(forgotRes.body.data).toHaveProperty('resetLink');
+      expect(forgotRes.body.data.mailMode).toBeDefined();
+
+      const resetRes = await request(app)
+        .post(`/api/auth/reset-password/${forgotRes.body.data.resetToken}`)
+        .send({
+          password: 'NewPass123!',
+          confirmPassword: 'NewPass123!',
+        });
+
+      expect(resetRes.statusCode).toBe(200);
+      expect(resetRes.body.success).toBe(true);
+
+      const loginRes = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'testuser1@example.com',
+          password: 'NewPass123!',
+        });
+
+      expect(loginRes.statusCode).toBe(200);
+      expect(loginRes.body.success).toBe(true);
+      expect(loginRes.body.data).toHaveProperty('token');
+    });
+  });
+
 });

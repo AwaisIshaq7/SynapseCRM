@@ -116,6 +116,7 @@ export function AuthProvider({ children }) {
     const res = await authApi.login(credentials)
     if (res.data.success) {
       const { token: newToken, user: newUser } = res.data.data
+      storage.setAuthMode(credentials.rememberMe)
       storage.setToken(newToken)
       storage.setUser(newUser)
       setToken(newToken)
@@ -136,18 +137,12 @@ export function AuthProvider({ children }) {
 
     const res = await authApi.register(userData)
     if (res.data.success) {
-      const { token: newToken, user: newUser } = res.data.data
-      storage.setToken(newToken)
-      storage.setUser(newUser)
-      setToken(newToken)
-      setUser(newUser)
-      // Apply theme from user preferences or fallback to stored theme
-      const userTheme = newUser?.preferences?.theme || storage.getTheme()
-      applyTheme(userTheme)
+      // Don't auto-login after registration
+      // User must explicitly sign in on the login page
       return { success: true }
     }
     return { success: false, error: res.data.error }
-  }, [applyTheme])
+  }, [])
 
   const logout = useCallback(() => {
     if (DEMO_MODE) {
@@ -161,6 +156,44 @@ export function AuthProvider({ children }) {
     // Preserve user's theme preference even after logout
     const storedTheme = storage.getTheme()
     setTheme(storedTheme)
+  }, [])
+
+  const forgotPassword = useCallback(async (email) => {
+    try {
+      const res = await authApi.forgotPassword(email)
+      if (res.data.success) {
+        const payload = res.data.data || {}
+        return { success: true, message: payload.message || res.data.message, data: payload }
+      }
+      return { success: false, error: res.data.error }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  }, [])
+
+  const resetPassword = useCallback(async (token, password, confirmPassword) => {
+    try {
+      const res = await authApi.resetPassword(token, password, confirmPassword)
+      if (res.data.success) {
+        const payload = res.data.data || {}
+        return { success: true, message: payload.message || res.data.message, data: payload }
+      }
+      return { success: false, error: res.data.error }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
+  }, [])
+
+  const changePassword = useCallback(async (currentPassword, newPassword, confirmPassword) => {
+    try {
+      const res = await authApi.changePassword(currentPassword, newPassword, confirmPassword)
+      if (res.data.success) {
+        return { success: true, message: res.data.message }
+      }
+      return { success: false, error: res.data.error }
+    } catch (err) {
+      return { success: false, error: err.message }
+    }
   }, [])
 
   const updateUserPreferences = useCallback(async (prefs) => {
@@ -207,6 +240,9 @@ export function AuthProvider({ children }) {
       login,
       register,
       logout,
+      forgotPassword,
+      resetPassword,
+      changePassword,
       isAdmin,
       isSalesManager,
       theme,

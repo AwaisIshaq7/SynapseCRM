@@ -9,6 +9,7 @@ import { Line, Doughnut } from 'react-chartjs-2'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboard } from '../hooks/useDashboard'
 import { usersApi } from '../api/usersApi'
+import { storage } from '../utils/storage'
 import StatCard from '../components/StatCard'
 import SentimentBadge from '../components/SentimentBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
@@ -132,7 +133,7 @@ export default function DashboardPage() {
         url += `?range=${range}`
       }
       const response = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${storage.getToken()}` }
       })
       const data = await response.json()
       if (data.success) {
@@ -149,7 +150,7 @@ export default function DashboardPage() {
   const fetchNotifications = useCallback(async () => {
     try {
       const response = await fetch('/api/notifications', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${storage.getToken()}` }
       })
       const data = await response.json()
       if (data.success) {
@@ -168,7 +169,7 @@ export default function DashboardPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${storage.getToken()}`
         },
         body: JSON.stringify({ notificationIds: [notificationId] })
       })
@@ -188,7 +189,7 @@ export default function DashboardPage() {
     setSearching(true)
     try {
       const response = await fetch(`/api/customers/search?q=${encodeURIComponent(query)}&limit=8`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${storage.getToken()}` }
       })
       const data = await response.json()
       if (data.success) {
@@ -214,17 +215,28 @@ export default function DashboardPage() {
   const exportToPDF = async () => {
     setExporting(true)
     try {
+      console.log('📄 Starting PDF export...')
       const response = await fetch('/api/reports/export/dashboard', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${storage.getToken()}`
         },
         body: JSON.stringify({ dateRange })
       })
       
+      console.log(`📄 Response status: ${response.status}`)
+      console.log(`📄 Content-Type: ${response.headers.get('Content-Type')}`)
+      console.log(`📄 Content-Length: ${response.headers.get('Content-Length')}`)
+      
       if (response.ok) {
         const blob = await response.blob()
+        console.log(`📄 Blob size: ${blob.size} bytes`)
+        
+        if (blob.size === 0) {
+          throw new Error('PDF blob is empty - server response was corrupted')
+        }
+        
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -233,12 +245,16 @@ export default function DashboardPage() {
         a.click()
         a.remove()
         window.URL.revokeObjectURL(url)
+        console.log('✅ PDF downloaded successfully')
         toast.success('Dashboard exported successfully!')
       } else {
-        throw new Error('Export failed')
+        const errorText = await response.text()
+        console.error('❌ Export failed:', errorText)
+        throw new Error(`Export failed with status ${response.status}`)
       }
-    } catch {
-      toast.error('Failed to export dashboard')
+    } catch (error) {
+      console.error('❌ PDF export error:', error)
+      toast.error('Failed to export dashboard: ' + error.message)
     } finally {
       setExporting(false)
     }
@@ -248,7 +264,7 @@ export default function DashboardPage() {
   const fetchKPITrends = useCallback(async () => {
     try {
       const response = await fetch('/api/dashboard/trends', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${storage.getToken()}` }
       })
       const data = await response.json()
       if (data.success) {

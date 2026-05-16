@@ -4,12 +4,14 @@ import { useAuth } from '../hooks/useAuth'
 import { useCustomer } from '../hooks/useCustomers'
 import { customersApi } from '../api/customersApi'
 import { interactionsApi } from '../api/interactionsApi'
+import RAGChat from '../components/rag/RAGChat'
 import SentimentBadge from '../components/SentimentBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { getStatusClasses, getChurnRiskClasses } from '../utils/sentimentUtils'
 import { capitalize, formatDate, timeAgo, getInteractionIcon } from '../utils/formatters'
+import { Bot } from 'lucide-react'
 
 const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note']
 
@@ -22,6 +24,7 @@ export default function CustomerDetailPage() {
   const [interactions,      setInteractions]      = useState([])
   const [interactionsLoad,  setInteractionsLoad]  = useState(true)
   const [showAddForm,       setShowAddForm]        = useState(false)
+  const [showRAG,           setShowRAG]            = useState(false)
   const [submitting,        setSubmitting]         = useState(false)
   const [newInteraction,    setNewInteraction]     = useState({
     type: 'call', content: '', date: new Date().toISOString().split('T')[0]
@@ -140,6 +143,13 @@ export default function CustomerDetailPage() {
 
           {/* Actions */}
           <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => setShowRAG(true)}
+              className="btn-secondary text-sm inline-flex items-center gap-2"
+            >
+              <Bot size={16} />
+              Ask AI Assistant
+            </button>
             <Link to={`/customers/${id}/edit`} className="btn-secondary text-sm">
               ✏️ Edit
             </Link>
@@ -315,6 +325,14 @@ export default function CustomerDetailPage() {
           </ol>
         )}
       </div>
+
+      {showRAG && (
+        <RAGChat
+          customerId={customer._id}
+          customerName={customer.name}
+          onClose={() => setShowRAG(false)}
+        />
+      )}
     </div>
   )
 }

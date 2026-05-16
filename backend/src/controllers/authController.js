@@ -1,8 +1,10 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
+const { sendPasswordResetEmail, shouldExposeResetArtifacts } = require('../services/emailService');
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+const generateToken = (id, expiresIn = '1h') => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn });
 };
 
 // POST /api/auth/register
@@ -33,7 +35,7 @@ exports.register = async (req, res) => {
 // POST /api/auth/login
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
 
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
@@ -45,7 +47,9 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    const token = generateToken(user._id);
+    // If remember me is checked, token expires in 7 days; otherwise 1 hour
+    const expiresIn = rememberMe ? '7d' : '1h';
+    const token = generateToken(user._id, expiresIn);
 
     res.status(200).json({
       success: true,
@@ -72,6 +76,150 @@ exports.getMe = async (req, res) => {
         role: user.role,
         preferences: user.preferences,
       },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// POST /api/auth/forgot-password
+// POST /api/auth/forgot-password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, data: null, error: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // Don't reveal if email exists (security best practice)
+      return res.status(200).json({ 
+        success: true,
+        data: {
+          message: 'If an account with that email exists, a password reset link has been sent.',
+        },
+        error: null,
+      });
+    }
+
+    // Generate reset token
+    const resetToken = user.generateResetToken();
+    await user.save();
+
+    const frontendBaseUrl = process.env.FRONTEND_URL || req.get('origin') || 'http://localhost:5173';
+    const resetLink = `${frontendBaseUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
+    const mailResult = await sendPasswordResetEmail({
+      to: user.email,
+      name: user.name,
+      resetLink,
+    });
+    
+    console.log(`📧 Password reset requested for ${email}`);
+
+    const responseData = {
+      message: 'Password reset instructions have been sent to your email',
+    };
+
+    if (shouldExposeResetArtifacts()) {
+      responseData.resetToken = resetToken;
+      responseData.resetLink = resetLink;
+      responseData.mailMode = mailResult.mode;
+    }
+
+    res.status(200).json({
+      success: true,
+      data: responseData,
+      error: null,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, data: null, error: err.message });
+  }
+};
+
+// POST /api/auth/reset-password/:token
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password, confirmPassword } = req.body;
+
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ success: false, data: null, error: 'Password fields are required' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ success: false, data: null, error: 'Passwords do not match' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, data: null, error: 'Password must be at least 6 characters' });
+    }
+
+    // Hash the token to find the user
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await User.findOne({
+      resetToken: hashedToken,
+      resetTokenExpiry: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ success: false, data: null, error: 'Invalid or expired reset token' });
+    }
+
+    // Update password
+    user.password = password;
+    user.resetToken = null;
+    user.resetTokenExpiry = null;
+    await user.save();
+
+    console.log(`✅ Password reset successfully for user ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        message: 'Password has been reset successfully',
+      },
+      error: null,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, data: null, error: err.message });
+  }
+};
+
+// PUT /api/auth/change-password (for logged-in users)
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, error: 'All password fields are required' });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, error: 'New passwords do not match' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, error: 'Password must be at least 6 characters' });
+    }
+
+    const user = await User.findById(req.user.id).select('+password');
+    
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: 'Current password is incorrect' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    console.log(`✅ Password changed for user ${user.email}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Password has been changed successfully',
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

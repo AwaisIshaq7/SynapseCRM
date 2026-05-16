@@ -1,7 +1,9 @@
 const Interaction = require('../models/Interaction');
 const Customer = require('../models/Customer');
 const SentimentLog = require('../models/SentimentLog');
+const User = require('../models/User');
 const axios = require('axios');
+const { sendSentimentAlert } = require('../utils/emailService');
 
 // GET /api/customers/:id/interactions
 exports.getInteractions = async (req, res) => {
@@ -73,6 +75,8 @@ exports.createInteraction = async (req, res) => {
       // Update customer overall sentiment and last contact date
       await updateCustomerSentiment(req.params.id);
 
+      await checkSentimentAlert(req.params.id, req.user._id);
+
     } catch (aiError) {
       // Flask not running yet — that's fine, continue without sentiment
       console.log('⚠️ AI service not available — interaction saved without sentiment');
@@ -93,6 +97,32 @@ exports.createInteraction = async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+};
+
+const checkSentimentAlert = async (customerId, userId) => {
+  const recent = await Interaction.find({
+    customerId,
+    sentimentLabel: { $ne: null },
+  }).sort({ createdAt: -1 }).limit(3);
+
+  if (recent.length === 3 && recent.every((i) => i.sentimentLabel === 'negative')) {
+    const customer = await Customer.findByIdAndUpdate(
+      customerId,
+      { status: 'at_risk' },
+      { new: true }
+    );
+
+    const manager = await User.findById(userId).select('name email');
+    if (manager && customer) {
+      await sendSentimentAlert(manager.email, manager.name, customer.name);
+    }
+
+    console.log(`⚠️ ${customer?.name} flagged at_risk — sentiment alert triggered`);
+
+    return true;
+  }
+
+  return false;
 };
 
 // DELETE /api/interactions/:interactionId

@@ -12,4 +12,13 @@ export const authApi = {
 
   updatePreferences: (prefs) =>
     axiosInstance.put('/users/preferences', prefs),
+
+  forgotPassword: (email) =>
+    axiosInstance.post('/auth/forgot-password', { email }),
+
+  resetPassword: (token, password, confirmPassword) =>
+    axiosInstance.post(`/auth/reset-password/${token}`, { password, confirmPassword }),
+
+  changePassword: (currentPassword, newPassword, confirmPassword) =>
+    axiosInstance.put('/auth/change-password', { currentPassword, newPassword, confirmPassword }),
 }

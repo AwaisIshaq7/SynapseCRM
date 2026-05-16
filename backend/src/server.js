@@ -1,28 +1,12 @@
-const express = require('express');
 const mongoose = require('mongoose');
-const cors = require('cors');
 const dotenv = require('dotenv');
+const cron = require('node-cron');
+const app = require('./app');
 const { startChurnRefresh } = require('./utils/churnRefresh');
+const { generateDailyRiskReport } = require('./services/ragBatchService');
+const { isMailConfigured } = require('./services/emailService');
 
 dotenv.config();
-
-
-const app = express();// Middleware
-app.use(cors());
-app.use(express.json());
-
-//allRouteesss
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/customers', require('./routes/customerRoutes'));
-app.use('/api/customers/:id/interactions', require('./routes/interactionRoutes'));
-app.use('/api/interactions', require('./routes/standaloneInteractionRoutes'));
-app.use('/api/dashboard', require('./routes/dashboardRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));
-app.use('/api/rag', require('./routes/ragRoutes')); 
-// Health check route
-app.get('/', (req, res) => {
-  res.json({ message: 'SynapseCRM API is running' });
-});
 
 // DB Connection
 const connectionOptions = {
@@ -44,7 +28,22 @@ const connectionOptions = {
 mongoose.connect(process.env.MONGO_URI, connectionOptions)
   .then(() => {
     console.log('✅ MongoDB connected');
-      startChurnRefresh();
+    startChurnRefresh();
+
+    if (process.env.NODE_ENV === 'production' && !isMailConfigured()) {
+      console.warn('⚠️ Password reset and alert email delivery is not configured. Set SMTP_USER and SMTP_PASS for Gmail SMTP in production use.');
+    }
+
+    cron.schedule('0 8 * * *', async () => {
+      try {
+        console.log('📊 Running daily RAG risk report...');
+        const insights = await generateDailyRiskReport();
+        console.log(`✅ Generated insights for ${insights.length} at-risk customers`);
+      } catch (error) {
+        console.error('❌ Daily RAG risk report failed:', error.message);
+      }
+    });
+
     console.log(`📊 Database: ${mongoose.connection.name}`);
     console.log(`🖥️  Host: ${mongoose.connection.host}:${mongoose.connection.port}`);
     
