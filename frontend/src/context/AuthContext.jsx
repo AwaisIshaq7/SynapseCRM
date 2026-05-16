@@ -98,7 +98,7 @@ export function AuthProvider({ children }) {
       }
     }
     verifyToken()
-  }, [])
+  }, [applyTheme])
 
   // When user preferences change, sync theme to storage
   useEffect(() => {

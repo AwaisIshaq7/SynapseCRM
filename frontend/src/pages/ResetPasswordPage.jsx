@@ -31,7 +31,7 @@ export default function ResetPasswordPage() {
         if (!mounted) return
         if (res.ok && data.success) setTokenValid(true)
         else setTokenValid(false)
-      } catch (err) {
+      } catch {
         if (!mounted) return
         setTokenValid(false)
       }
