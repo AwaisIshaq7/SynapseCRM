@@ -1,8 +1,8 @@
 import axios from 'axios'
 import { storage } from '../utils/storage'
 
-// Use env variable — falls back to localhost for dev
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
+// Use env variable — falls back to the Vite proxy path for local dev
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -28,7 +28,10 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const requestUrl = error.config?.url || ''
+    const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register') || requestUrl.includes('/auth/forgot-password') || requestUrl.includes('/auth/reset-password')
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       // Token expired or invalid — clear storage and redirect
       storage.clearAll()
       window.location.href = '/login'

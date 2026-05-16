@@ -3,8 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
-import MyCRMLogo from '../assets/MyCRMLOGO.svg'
-import { Lock, Eye, EyeOff, CheckCircle, AlertCircle, ArrowLeft } from 'lucide-react'
+import { Lock, Eye, EyeOff } from 'lucide-react'
 
 export default function ResetPasswordPage() {
   const { token } = useParams()
@@ -14,16 +13,31 @@ export default function ResetPasswordPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [success, setSuccess] = useState(false)
-  const [tokenValid, setTokenValid] = useState(true)
+  const [tokenValid, setTokenValid] = useState(null) // null=loading, false=invalid, true=valid
 
   const { resetPassword } = useAuth()
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (!token) {
-      setTokenValid(false)
-      toast.error('Invalid reset token')
+    let mounted = true
+    const validate = async () => {
+      if (!token) {
+        if (mounted) setTokenValid(false)
+        return
+      }
+      try {
+        const res = await fetch(`/api/auth/validate-reset/${encodeURIComponent(token)}`)
+        const data = await res.json()
+        if (!mounted) return
+        if (res.ok && data.success) setTokenValid(true)
+        else setTokenValid(false)
+      } catch (err) {
+        if (!mounted) return
+        setTokenValid(false)
+      }
     }
+    validate()
+    return () => { mounted = false }
   }, [token])
 
   const validate = () => {
@@ -67,7 +81,7 @@ export default function ResetPasswordPage() {
         setErrors({ form: result.error || 'Failed to reset password' })
         toast.error(result.error || 'Failed to reset password')
       }
-    } catch (err) {
+    } catch {
       setErrors({ form: 'Connection failed. Please try again.' })
       toast.error('Connection failed. Please try again.')
     } finally {
@@ -75,81 +89,51 @@ export default function ResetPasswordPage() {
     }
   }
 
-  if (!tokenValid) {
+  if (tokenValid === false) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-red-100">
-              <AlertCircle className="w-8 h-8 text-red-600" />
-            </div>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow p-6 text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Invalid or Expired Link</h2>
+          <p className="text-sm text-gray-600 mb-4">This password reset link is invalid or has expired.</p>
+          <div className="flex gap-2">
+            <Link to="/forgot-password" className="flex-1 py-2 rounded bg-indigo-600 text-white text-sm">Request New Link</Link>
+            <Link to="/login" className="flex-1 py-2 rounded border border-gray-200 text-sm">Back to Login</Link>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Invalid Link</h2>
-          <p className="text-gray-600 mb-6">
-            This password reset link is invalid or has expired. Please request a new one.
-          </p>
-          <Link
-            to="/forgot-password"
-            className="inline-block w-full py-2.5 px-4 rounded-xl font-semibold text-white bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 transition-all duration-300"
-          >
-            Request New Link
-          </Link>
         </div>
+      </div>
+    )
+  }
+
+  if (tokenValid === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner size="lg" />
       </div>
     )
   }
 
   if (success) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 text-center animate-scaleIn">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 rounded-full bg-green-100">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset Successfully</h2>
-          <p className="text-gray-600 mb-6">
-            Your password has been reset. You can now log in with your new password.
-          </p>
-          <p className="text-sm text-gray-500">Redirecting to login...</p>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow p-6 text-center">
+          <h2 className="text-xl font-medium text-gray-900 mb-2">Password Reset</h2>
+          <p className="text-sm text-gray-600 mb-4">Your password has been reset. Redirecting to login...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Header */}
-        <div className="text-center mb-8 animate-slideDown">
-          <div className="flex justify-center mb-4">
-            <img 
-              src={MyCRMLogo} 
-              alt="SynapseCRM Logo" 
-              className="h-12 w-auto"
-              style={{ filter: 'brightness(0) saturate(100%) invert(25%) sepia(98%) saturate(3000%) hue-rotate(250deg) brightness(100%) contrast(95%)' }}
-            />
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create New Password</h1>
-          <p className="text-gray-600">Enter your new password below</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white rounded-lg shadow p-6">
+        {errors.form && (
+          <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-sm text-red-700">{errors.form}</div>
+        )}
 
-        {/* Form */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 animate-scaleIn">
-          {errors.form && (
-            <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
-              <p className="text-sm text-red-600">{errors.form}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {/* Password Field */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                New Password
-              </label>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -182,16 +166,12 @@ export default function ResetPasswordPage() {
                   {errors.password}
                 </p>
               )}
-              <p className="mt-2 text-xs text-gray-500">
-                At least 6 characters, mix of letters and numbers recommended
-              </p>
+              <p className="mt-2 text-xs text-gray-500">At least 6 characters</p>
             </div>
 
             {/* Confirm Password Field */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password
-              </label>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -227,32 +207,21 @@ export default function ResetPasswordPage() {
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-2.5 px-4 rounded-xl font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 mt-6 shadow-md bg-linear-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
+          <div>
+            <button type="submit" disabled={loading} className="w-full py-2 rounded bg-indigo-600 text-white font-medium">
               {loading ? (
-                <>
+                <div className="flex items-center justify-center gap-2">
                   <LoadingSpinner size="sm" />
-                  <span>Resetting...</span>
-                </>
+                  <span className="text-sm">Resetting...</span>
+                </div>
               ) : (
                 <span>Reset Password</span>
               )}
             </button>
-          </form>
-
-          {/* Back to Login */}
-          <div className="mt-6 text-center">
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back to Login
-            </Link>
           </div>
+          </form>
+        <div className="mt-4 text-center">
+          <Link to="/login" className="text-sm text-gray-600">Back to Login</Link>
         </div>
       </div>
     </div>

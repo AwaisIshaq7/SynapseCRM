@@ -9,4 +9,7 @@ export const dashboardApi = {
 
   getChurnDistribution: () =>
     axiosInstance.get('/dashboard/churn-distribution'),
+
+  getAdminOverview: () =>
+    axiosInstance.get('/dashboard/admin-overview'),
 }

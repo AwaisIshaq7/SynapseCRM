@@ -8,11 +8,13 @@ import {
 import { Line, Doughnut } from 'react-chartjs-2'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboard } from '../hooks/useDashboard'
+import { dashboardApi } from '../api/dashboardApi'
 import { usersApi } from '../api/usersApi'
 import { storage } from '../utils/storage'
 import StatCard from '../components/StatCard'
 import SentimentBadge from '../components/SentimentBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
+import AdminOverviewPanel from '../components/admin/AdminOverviewPanel'
 import toast from 'react-hot-toast'
 import { timeAgo } from '../utils/formatters'
 import { getChurnRiskClasses } from '../utils/sentimentUtils'
@@ -78,9 +80,9 @@ export default function DashboardPage() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
 
-  // ─── NEW: Export State ─────────────────────────────────────
-  const [exporting, setExporting] = useState(false)
   const dashboardRef = useRef(null)
+  const [adminOverview, setAdminOverview] = useState(null)
+  const [adminOverviewLoading, setAdminOverviewLoading] = useState(false)
 
   // ─── NEW: Sparkline/KPI Trends State ───────────────────────
   const [kpiTrends, setKpiTrends] = useState({
@@ -126,7 +128,7 @@ export default function DashboardPage() {
   const fetchSentimentWithDateRange = useCallback(async (range, customFrom, customTo) => {
     setChartLoading(true)
     try {
-      let url = `/api/analytics/sentiment-trend`
+      let url = `/api/dashboard/sentiment-trend`
       if (range === 'custom' && customFrom && customTo) {
         url += `?from=${customFrom}&to=${customTo}`
       } else {
@@ -211,55 +213,6 @@ export default function DashboardPage() {
     return () => clearTimeout(timer)
   }, [searchQuery, handleSearch])
 
-  // ─── NEW: Export to PDF ────────────────────────────────────
-  const exportToPDF = async () => {
-    setExporting(true)
-    try {
-      console.log('📄 Starting PDF export...')
-      const response = await fetch('/api/reports/export/dashboard', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${storage.getToken()}`
-        },
-        body: JSON.stringify({ dateRange })
-      })
-      
-      console.log(`📄 Response status: ${response.status}`)
-      console.log(`📄 Content-Type: ${response.headers.get('Content-Type')}`)
-      console.log(`📄 Content-Length: ${response.headers.get('Content-Length')}`)
-      
-      if (response.ok) {
-        const blob = await response.blob()
-        console.log(`📄 Blob size: ${blob.size} bytes`)
-        
-        if (blob.size === 0) {
-          throw new Error('PDF blob is empty - server response was corrupted')
-        }
-        
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `dashboard-report-${new Date().toISOString().split('T')[0]}.pdf`
-        document.body.appendChild(a)
-        a.click()
-        a.remove()
-        window.URL.revokeObjectURL(url)
-        console.log('✅ PDF downloaded successfully')
-        toast.success('Dashboard exported successfully!')
-      } else {
-        const errorText = await response.text()
-        console.error('❌ Export failed:', errorText)
-        throw new Error(`Export failed with status ${response.status}`)
-      }
-    } catch (error) {
-      console.error('❌ PDF export error:', error)
-      toast.error('Failed to export dashboard: ' + error.message)
-    } finally {
-      setExporting(false)
-    }
-  }
-
   // ─── NEW: Fetch KPI Trends ─────────────────────────────────
   const fetchKPITrends = useCallback(async () => {
     try {
@@ -275,15 +228,31 @@ export default function DashboardPage() {
     }
   }, [])
 
+  const fetchAdminOverview = useCallback(async () => {
+    if (!isAdmin) return
+    setAdminOverviewLoading(true)
+    try {
+      const response = await dashboardApi.getAdminOverview()
+      if (response.data.success) {
+        setAdminOverview(response.data.data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch admin overview:', error)
+    } finally {
+      setAdminOverviewLoading(false)
+    }
+  }, [isAdmin])
+
   // Initial data fetch for enhancements - FIXED: added dependencies
   useEffect(() => {
     const timer = window.setTimeout(() => {
       fetchNotifications()
       fetchKPITrends()
+      fetchAdminOverview()
     }, 0)
 
     return () => window.clearTimeout(timer)
-  }, [fetchNotifications, fetchKPITrends])
+  }, [fetchNotifications, fetchKPITrends, fetchAdminOverview])
 
   // ─── CHART DATA ───────────────────────────────────────────
   const isDark = user?.preferences?.theme === 'dark'
@@ -399,6 +368,13 @@ export default function DashboardPage() {
 
   const recentCount = summary?.recentInteractions?.length || 0
   const alertCount = summary?.churnAlerts?.length || 0
+  const sentimentTotal = (summary?.positiveCount || 0) + (summary?.negativeCount || 0)
+  const sentimentHealth = sentimentTotal
+    ? Math.round(((summary?.positiveCount || 0) / sentimentTotal) * 100)
+    : 0
+  const riskCoverage = summary?.totalCustomers
+    ? Math.round(((summary?.atRiskCount || 0) / summary.totalCustomers) * 100)
+    : 0
   const currentHour = new Date().getHours()
   const todayGreeting = currentHour < 12 ? 'morning' : currentHour < 18 ? 'afternoon' : 'evening'
 
@@ -632,7 +608,7 @@ export default function DashboardPage() {
   return (
     <div ref={dashboardRef} className="max-w-7xl mx-auto space-y-6">
       {/* Top Bar with Search and Notifications */}
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
         {/* Global Search Bar */}
         <div className="relative flex-1 max-w-md">
           <div className="relative">
@@ -641,7 +617,7 @@ export default function DashboardPage() {
               placeholder="Search customers by name, email, or company..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             />
             <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -682,27 +658,11 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Export PDF Button */}
-          <button
-            onClick={exportToPDF}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            {exporting ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            )}
-            <span className="text-sm">Export PDF</span>
-          </button>
-
           {/* Notification Bell */}
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className="relative rounded-xl border border-slate-200 p-2.5 text-slate-600 transition hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -741,6 +701,69 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">AI risk queue</p>
+          <div className="mt-3 flex items-end justify-between gap-4">
+            <div>
+              <p className="text-3xl font-semibold text-slate-900 dark:text-white">{alertCount}</p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">high-priority churn alerts</p>
+            </div>
+            <span className={clsx(
+              'rounded-full px-3 py-1 text-xs font-semibold',
+              riskCoverage >= 30 ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+            )}>
+              {riskCoverage}% portfolio risk
+            </span>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Sentiment health</p>
+          <div className="mt-3">
+            <div className="flex items-end justify-between">
+              <p className="text-3xl font-semibold text-slate-900 dark:text-white">{sentimentHealth}%</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{summary?.negativeCount ?? 0} negative signals</p>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${sentimentHealth}%` }} />
+            </div>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">Automation status</p>
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 dark:text-slate-300">Sentiment analysis</span>
+              <span className="font-semibold text-emerald-600">Active</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 dark:text-slate-300">Churn refresh</span>
+              <span className="font-semibold text-emerald-600">Scheduled</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-600 dark:text-slate-300">Synapse AI</span>
+              <span className="font-semibold text-brand-600">On demand</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {isAdmin && (
+        <div className="grid gap-6 xl:grid-cols-[minmax(320px,380px)_1fr]">
+          <AdminOverviewPanel data={adminOverview} loading={adminOverviewLoading} />
+
+          <div className="space-y-6">
+            <div className="page-section-enter rounded-3xl border border-slate-200 bg-linear-to-r from-slate-900 to-slate-950 p-6 text-white shadow-lg shadow-slate-900/20 dark:border-slate-700/70">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-300">Admin dashboard</p>
+              <h2 className="mt-2 text-2xl font-bold">Central command for team oversight</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                Monitor every sales manager, their customers, and their latest interactions from a single admin-only view.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Section */}
       <div className="page-section-enter relative overflow-hidden rounded-3xl border border-slate-200 p-6 shadow-sm backdrop-blur dark:border-slate-700 sm:p-8">

@@ -34,6 +34,10 @@ mongoose.connect(process.env.MONGO_URI, connectionOptions)
       console.warn('⚠️ Password reset and alert email delivery is not configured. Set SMTP_USER and SMTP_PASS for Gmail SMTP in production use.');
     }
 
+    if (process.env.NODE_ENV !== 'test' && process.env.NODE_ENV !== 'production' && !process.env.FRONTEND_URL) {
+      console.warn('⚠️ FRONTEND_URL is not set. Password reset links will fall back to the request origin in non-production environments.');
+    }
+
     cron.schedule('0 8 * * *', async () => {
       try {
         console.log('📊 Running daily RAG risk report...');

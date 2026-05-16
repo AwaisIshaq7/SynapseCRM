@@ -113,10 +113,37 @@ export function AuthProvider({ children }) {
     //   return { success: true }
     // }
 
-    const res = await authApi.login(credentials)
+    try {
+      const res = await authApi.login(credentials)
+      if (res.data.success) {
+        const { token: newToken, user: newUser } = res.data.data
+        storage.setToken(newToken)
+        storage.setUser(newUser)
+        setToken(newToken)
+        setUser(newUser)
+        // Apply theme from user preferences or fallback to stored theme
+        const userTheme = newUser?.preferences?.theme || storage.getTheme()
+        applyTheme(userTheme)
+        return { success: true }
+      }
+      return { success: false, error: res.data.error }
+    } catch (err) {
+      return {
+        success: false,
+        error: err.response?.data?.error || err.message || 'Login failed',
+      }
+    }
+  }, [applyTheme])
+
+  const register = useCallback(async (userData) => {
+    if (DEMO_MODE) {
+      createDemoSession(setUser, setToken)
+      return { success: true }
+    }
+
+    const res = await authApi.register(userData)
     if (res.data.success) {
       const { token: newToken, user: newUser } = res.data.data
-      storage.setAuthMode(credentials.rememberMe)
       storage.setToken(newToken)
       storage.setUser(newUser)
       setToken(newToken)
@@ -128,21 +155,6 @@ export function AuthProvider({ children }) {
     }
     return { success: false, error: res.data.error }
   }, [applyTheme])
-
-  const register = useCallback(async (userData) => {
-    if (DEMO_MODE) {
-      createDemoSession(setUser, setToken)
-      return { success: true }
-    }
-
-    const res = await authApi.register(userData)
-    if (res.data.success) {
-      // Don't auto-login after registration
-      // User must explicitly sign in on the login page
-      return { success: true }
-    }
-    return { success: false, error: res.data.error }
-  }, [])
 
   const logout = useCallback(() => {
     if (DEMO_MODE) {
@@ -162,8 +174,7 @@ export function AuthProvider({ children }) {
     try {
       const res = await authApi.forgotPassword(email)
       if (res.data.success) {
-        const payload = res.data.data || {}
-        return { success: true, message: payload.message || res.data.message, data: payload }
+        return { success: true, message: res.data.data?.message || res.data.message }
       }
       return { success: false, error: res.data.error }
     } catch (err) {
@@ -175,8 +186,7 @@ export function AuthProvider({ children }) {
     try {
       const res = await authApi.resetPassword(token, password, confirmPassword)
       if (res.data.success) {
-        const payload = res.data.data || {}
-        return { success: true, message: payload.message || res.data.message, data: payload }
+        return { success: true, message: res.data.data?.message || res.data.message }
       }
       return { success: false, error: res.data.error }
     } catch (err) {

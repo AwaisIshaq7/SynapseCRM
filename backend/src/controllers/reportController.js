@@ -1,194 +1,312 @@
-const puppeteer = require('puppeteer');
 const Customer = require('../models/Customer');
 const Interaction = require('../models/Interaction');
+const { Parser } = require('json2csv');
 
-exports.exportDashboardPDF = async (req, res) => {
-  let browser;
-  let responseSent = false;
-  
-  // Set a timeout to prevent hanging requests
-  const timeoutHandle = setTimeout(() => {
-    if (!responseSent) {
-      console.error('❌ PDF export timeout after 60 seconds');
-      responseSent = true;
-      if (!res.headersSent) {
-        res.status(503).json({ 
-          success: false, 
-          error: 'PDF generation timeout - request took too long' 
-        });
-      }
-    }
-  }, 60000);
-
+// GET /api/reports/customers/csv
+exports.exportCustomersCSV = async (req, res) => {
   try {
-    const { dateRange } = req.body;
+    let filter = {};
+    if (req.user.role === 'sales_manager') {
+      filter.assignedTo = req.user._id;
+    }
 
-    // Fetch dashboard data
-    const totalCustomers = await Customer.countDocuments();
-    const atRiskCount = await Customer.countDocuments({ churnScore: { $gt: 0.6 } });
-    const recentInteractions = await Interaction.find()
-      .sort({ createdAt: -1 })
-      .limit(10)
-      .populate('customerId', 'name email');
+    const customers = await Customer.find(filter)
+      .populate('assignedTo', 'name')
+      .lean();
 
-    const positiveCount = await Interaction.countDocuments({ sentimentLabel: 'positive' });
-    const negativeCount = await Interaction.countDocuments({ sentimentLabel: 'negative' });
+    const data = customers.map(c => ({
+      Name: c.name,
+      Email: c.email,
+      Phone: c.phone || '',
+      Company: c.company || '',
+      Status: c.status,
+      'Churn Score': c.churnScore,
+      'Overall Sentiment': c.overallSentiment,
+      'Assigned To': c.assignedTo?.name || '',
+      'Last Contact': c.lastContactDate ? new Date(c.lastContactDate).toDateString() : '',
+      'Created At': new Date(c.createdAt).toDateString(),
+    }));
 
-    // Generate interactions table HTML
-    const interactionsTableHTML = recentInteractions.map(i => `
-      <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${i.customerId?.name || 'Unknown'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${i.customerId?.email || '-'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${i.type || '-'}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${(i.content || '').substring(0, 50)}${(i.content || '').length > 50 ? '...' : ''}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px;">${new Date(i.createdAt).toLocaleDateString()}</td>
+    const parser = new Parser();
+    const csv = parser.parse(data);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=customers.csv');
+    res.status(200).send(csv);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET /api/reports/customers/report
+exports.exportCustomersReport = async (req, res) => {
+  try {
+    let filter = {};
+    if (req.user.role === 'sales_manager') {
+      filter.assignedTo = req.user._id;
+    }
+
+    const customers = await Customer.find(filter)
+      .populate('assignedTo', 'name')
+      .lean();
+
+    const rows = customers.map((c, index) => `
+      <tr class="${index % 2 === 0 ? 'row-even' : 'row-odd'}">
+        <td>${c.name || ''}</td>
+        <td>${c.email || ''}</td>
+        <td>${c.phone || ''}</td>
+        <td>${c.company || ''}</td>
+        <td><span class="status-pill status-${String(c.status || '').replace(/_/g, '-').toLowerCase()}">${c.status || ''}</span></td>
+        <td>${typeof c.churnScore === 'number' ? `${(c.churnScore * 100).toFixed(0)}%` : ''}</td>
+        <td>${c.overallSentiment || ''}</td>
+        <td>${c.assignedTo?.name || ''}</td>
+        <td>${c.lastContactDate ? new Date(c.lastContactDate).toDateString() : ''}</td>
       </tr>
     `).join('');
 
-    // Generate HTML for PDF - simplified and robust
-    const html = `
-<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>SynapseCRM Dashboard Report</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SynapseCRM Customer Report</title>
+  <style>
+    :root {
+      color-scheme: light;
+    }
+    body {
+      margin: 0;
+      padding: 28px;
+      font-family: Inter, Segoe UI, Tahoma, Arial, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .sheet {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+    }
+    .header {
+      padding: 28px 32px 18px;
+      background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+      color: #fff;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .header p {
+      margin: 8px 0 0;
+      opacity: 0.9;
+      font-size: 13px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 18px 32px 0;
+    }
+    .stat {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+      padding: 14px 16px;
+    }
+    .stat .label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .stat .value {
+      font-size: 24px;
+      font-weight: 800;
+      margin-top: 6px;
+      color: #0f172a;
+    }
+    .content {
+      padding: 22px 32px 32px;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid #e2e8f0;
+      border-radius: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
+      background: #fff;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #0f172a;
+      color: #fff;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+      padding: 14px 14px;
+      white-space: nowrap;
+    }
+    tbody td {
+      padding: 12px 14px;
+      border-top: 1px solid #e2e8f0;
+      font-size: 13px;
+      color: #0f172a;
+      vertical-align: top;
+    }
+    tbody tr.row-even { background: #ffffff; }
+    tbody tr.row-odd { background: #f8fafc; }
+    tbody tr:hover { background: #eef6ff; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: capitalize;
+      white-space: nowrap;
+    }
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-at-risk { background: #fee2e2; color: #b91c1c; }
+    .status-inactive { background: #e2e8f0; color: #334155; }
+    .footer {
+      padding: 0 32px 26px;
+      color: #64748b;
+      font-size: 12px;
+    }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .sheet { box-shadow: none; border-radius: 0; border: none; }
+      .table-wrap { overflow: visible; }
+      thead th { position: static; }
+    }
+  </style>
 </head>
-<body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 30px; background: white; color: #1f2937;">
-  
-  <div style="text-align: center; margin-bottom: 30px;">
-    <h1 style="color: #0369a1; margin: 0 0 5px 0; font-size: 28px;">📊 SynapseCRM Dashboard Report</h1>
-    <p style="color: #6b7280; margin: 5px 0 0 0; font-size: 12px;">Generated on ${new Date().toLocaleString()}</p>
-  </div>
-
-  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
-    <div style="border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; background: #f9fafb;">
-      <p style="margin: 0; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase;">Total Customers</p>
-      <p style="margin: 10px 0 0 0; font-size: 28px; font-weight: bold; color: #111827;">${totalCustomers}</p>
+<body>
+  <div class="sheet">
+    <div class="header">
+      <h1>SynapseCRM Customer Report</h1>
+      <p>Generated on ${new Date().toLocaleString()}</p>
     </div>
-    <div style="border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; background: #f9fafb;">
-      <p style="margin: 0; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase;">At Risk</p>
-      <p style="margin: 10px 0 0 0; font-size: 28px; font-weight: bold; color: #dc2626;">${atRiskCount}</p>
+    <div class="stats">
+      <div class="stat"><div class="label">Total Customers</div><div class="value">${customers.length}</div></div>
+      <div class="stat"><div class="label">At Risk</div><div class="value">${customers.filter(c => c.status === 'at_risk').length}</div></div>
+      <div class="stat"><div class="label">Active</div><div class="value">${customers.filter(c => c.status === 'active').length}</div></div>
+      <div class="stat"><div class="label">Inactive</div><div class="value">${customers.filter(c => c.status === 'inactive').length}</div></div>
     </div>
-    <div style="border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; background: #f9fafb;">
-      <p style="margin: 0; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase;">Positive Sentiment</p>
-      <p style="margin: 10px 0 0 0; font-size: 28px; font-weight: bold; color: #16a34a;">${positiveCount}</p>
+    <div class="content">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Company</th>
+              <th>Status</th>
+              <th>Churn Score</th>
+              <th>Sentiment</th>
+              <th>Assigned To</th>
+              <th>Last Contact</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows || '<tr><td colspan="9" style="padding:20px;text-align:center;color:#94a3b8;">No customers available</td></tr>'}
+          </tbody>
+        </table>
+      </div>
     </div>
-    <div style="border: 1px solid #d1d5db; border-radius: 8px; padding: 20px; background: #f9fafb;">
-      <p style="margin: 0; color: #6b7280; font-size: 11px; font-weight: 600; text-transform: uppercase;">Negative Sentiment</p>
-      <p style="margin: 10px 0 0 0; font-size: 28px; font-weight: bold; color: #dc2626;">${negativeCount}</p>
-    </div>
+    <div class="footer">This report is filtered to the signed-in user when the role is sales_manager.</div>
   </div>
-
-  <div style="margin-top: 40px;">
-    <h2 style="color: #111827; font-size: 16px; margin: 0 0 15px 0; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">📋 Recent Interactions</h2>
-    <table style="width: 100%; border-collapse: collapse; background: white;">
-      <thead>
-        <tr style="background-color: #f3f4f6;">
-          <th style="padding: 10px; text-align: left; font-size: 12px; font-weight: 600; color: #111827; border-bottom: 2px solid #d1d5db;">Customer</th>
-          <th style="padding: 10px; text-align: left; font-size: 12px; font-weight: 600; color: #111827; border-bottom: 2px solid #d1d5db;">Email</th>
-          <th style="padding: 10px; text-align: left; font-size: 12px; font-weight: 600; color: #111827; border-bottom: 2px solid #d1d5db;">Type</th>
-          <th style="padding: 10px; text-align: left; font-size: 12px; font-weight: 600; color: #111827; border-bottom: 2px solid #d1d5db;">Content</th>
-          <th style="padding: 10px; text-align: left; font-size: 12px; font-weight: 600; color: #111827; border-bottom: 2px solid #d1d5db;">Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${interactionsTableHTML || '<tr><td colspan="5" style="padding: 20px; text-align: center; color: #9ca3af;">No recent interactions</td></tr>'}
-      </tbody>
-    </table>
-  </div>
-
-  <div style="margin-top: 40px; padding-top: 20px; border-top: 2px solid #e5e7eb; text-align: center; font-size: 11px; color: #6b7280;">
-    <p style="margin: 0;">This report was automatically generated by SynapseCRM</p>
-    <p style="margin: 5px 0 0 0;">© ${new Date().getFullYear()} SynapseCRM. All rights reserved.</p>
-  </div>
-
 </body>
-</html>
-    `;
+</html>`;
 
-    console.log('📄 PDF Generation Started');
-    console.log(`   Data: ${totalCustomers} customers, ${atRiskCount} at-risk, ${positiveCount} positive, ${negativeCount} negative interactions`);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename=customers-report.html');
+    res.status(200).send(html);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
 
-    // Launch browser with better configuration
-    browser = await puppeteer.launch({
-      headless: 'new',
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--single-process',
-        '--no-first-run'
-      ]
-    });
-
-    const page = await browser.newPage();
-    
-    // Set a reasonable viewport
-    await page.setViewport({ width: 1280, height: 720 });
-    
-    // Set content and wait for it to render
-    await page.setContent(html, {
-      waitUntil: ['load', 'networkidle0'],
-      timeout: 30000
-    });
-
-    // Extra wait for rendering
-    await page.waitForTimeout(1000);
-
-    // Generate PDF with optimized settings
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: 10, right: 10, bottom: 10, left: 10 },
-      scale: 1
-    });
-
-    await page.close();
-    await browser.close();
-
-    console.log(`✅ PDF Generated: ${pdfBuffer.length} bytes`);
-
-    // Verify PDF buffer has content
-    if (!pdfBuffer || pdfBuffer.length === 0) {
-      throw new Error('PDF buffer is empty - Puppeteer failed to generate PDF');
+// GET /api/reports/interactions/csv
+exports.exportInteractionsCSV = async (req, res) => {
+  try {
+    let customerFilter = {};
+    if (req.user.role === 'sales_manager') {
+      const myCustomers = await Customer.find({ assignedTo: req.user._id }).select('_id');
+      customerFilter = { customerId: { $in: myCustomers.map(c => c._id) } };
     }
 
-    // Clear the timeout since we're sending the response
-    clearTimeout(timeoutHandle);
-    responseSent = true;
+    const interactions = await Interaction.find(customerFilter)
+      .populate('customerId', 'name company')
+      .populate('userId', 'name')
+      .lean();
 
-    // Send PDF as response using end() instead of send()
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="dashboard-report-${new Date().toISOString().split('T')[0]}.pdf"`
-    );
-    
-    res.end(pdfBuffer, 'binary');
-    console.log('✅ PDF sent to client');
+    const data = interactions.map(i => ({
+      Customer: i.customerId?.name || '',
+      Company: i.customerId?.company || '',
+      Type: i.type,
+      Content: i.content,
+      Sentiment: i.sentimentLabel || 'pending',
+      'Sentiment Score': i.sentimentScore ?? '',
+      'Logged By': i.userId?.name || '',
+      Date: new Date(i.date).toDateString(),
+    }));
 
-  } catch (error) {
-    console.error('❌ PDF export error:', error.message);
-    console.error('Stack:', error.stack);
-    
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (e) {
-        console.error('Error closing browser:', e.message);
-      }
+    const parser = new Parser();
+    const csv = parser.parse(data);
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=interactions.csv');
+    res.status(200).send(csv);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET /api/reports/summary
+exports.getReportSummary = async (req, res) => {
+  try {
+    let filter = {};
+    if (req.user.role === 'sales_manager') {
+      filter.assignedTo = req.user._id;
     }
 
-    // Clear timeout and prevent double response
-    clearTimeout(timeoutHandle);
-    if (!responseSent && !res.headersSent) {
-      responseSent = true;
-      res.status(500).json({
-        success: false,
-        error: error.message,
-        type: error.constructor.name
-      });
-    }
+    const customers = await Customer.find(filter);
+    const total = customers.length;
+    const atRisk = customers.filter(c => c.status === 'at_risk').length;
+    const active = customers.filter(c => c.status === 'active').length;
+    const inactive = customers.filter(c => c.status === 'inactive').length;
+    const positive = customers.filter(c => c.overallSentiment === 'positive').length;
+    const negative = customers.filter(c => c.overallSentiment === 'negative').length;
+    const neutral = customers.filter(c => c.overallSentiment === 'neutral').length;
+    const avgChurn = total
+      ? (customers.reduce((s, c) => s + c.churnScore, 0) / total).toFixed(2)
+      : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        total, atRisk, active, inactive,
+        sentiment: { positive, negative, neutral },
+        avgChurnScore: parseFloat(avgChurn),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };

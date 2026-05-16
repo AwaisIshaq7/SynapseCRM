@@ -1,13 +1,11 @@
 const Customer = require('../models/Customer');
+const Interaction = require('../models/Interaction');
 
-// GET /api/customers
 exports.getCustomers = async (req, res) => {
   try {
     const { status, search } = req.query;
-
     let filter = {};
 
-    // sales_manager only sees their assigned customers
     if (req.user.role === 'sales_manager') {
       filter.assignedTo = req.user._id;
     }
@@ -22,25 +20,30 @@ exports.getCustomers = async (req, res) => {
       ];
     }
 
-    const customers = await Customer.find(filter).populate('assignedTo', 'name email');
+    const customers = await Customer.find(filter)
+      .populate('assignedTo', 'name email')
+      .sort({ createdAt: -1 });
 
-    res.status(200).json({
-      success: true,
-      count: customers.length,
-      data: customers,
-    });
+    res.status(200).json({ success: true, count: customers.length, data: customers });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// GET /api/customers/:id
 exports.getCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findById(req.params.id).populate('assignedTo', 'name email');
+    const customer = await Customer.findById(req.params.id)
+      .populate('assignedTo', 'name email');
 
     if (!customer) {
       return res.status(404).json({ success: false, error: 'Customer not found' });
+    }
+
+    if (
+      req.user.role === 'sales_manager' &&
+      customer.assignedTo?._id.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
     }
 
     res.status(200).json({ success: true, data: customer });
@@ -49,67 +52,78 @@ exports.getCustomer = async (req, res) => {
   }
 };
 
-// POST /api/customers
 exports.createCustomer = async (req, res) => {
   try {
-    const { name, email, phone, company, status } = req.body;
+    const { name, email, phone, company, status, assignedTo } = req.body;
 
-    // Auto-assign to the user creating the customer
     const customer = await Customer.create({
       name,
       email,
       phone,
       company,
       status,
-      assignedTo: req.user._id,
+      assignedTo: req.user.role === 'sales_manager' ? req.user._id : (assignedTo || req.user._id),
     });
 
-    res.status(201).json({
-      success: true,
-      data: customer,
-      message: 'Customer created successfully',
-    });
+    res.status(201).json({ success: true, data: customer, message: 'Customer created successfully' });
   } catch (err) {
-    // Handle duplicate email
     if (err.code === 11000) {
-      return res.status(400).json({ success: false, error: 'A customer with this email already exists' });
+      return res.status(400).json({ success: false, error: 'Email already exists' });
     }
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// PUT /api/customers/:id
 exports.updateCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
-    );
+    const customer = await Customer.findById(req.params.id);
 
     if (!customer) {
       return res.status(404).json({ success: false, error: 'Customer not found' });
     }
 
-    res.status(200).json({ success: true, data: customer });
+    if (
+      req.user.role === 'sales_manager' &&
+      customer.assignedTo?.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, error: 'Access denied' });
+    }
+
+    const updates = { ...req.body };
+    if (req.user.role === 'sales_manager') {
+      delete updates.assignedTo;
+    }
+
+    const updated = await Customer.findByIdAndUpdate(
+      req.params.id, updates, { returnDocument: 'after', runValidators: true }
+    );
+
+    res.status(200).json({ success: true, data: updated });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// DELETE /api/customers/:id  (Admin only)
 exports.deleteCustomer = async (req, res) => {
   try {
-    const customer = await Customer.findByIdAndDelete(req.params.id);
-
+    const customer = await Customer.findById(req.params.id);
     if (!customer) {
       return res.status(404).json({ success: false, error: 'Customer not found' });
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'Customer deleted successfully',
-    });
+    // Sales managers may only delete customers assigned to them
+    if (req.user.role === 'sales_manager') {
+      const assignedTo = customer.assignedTo ? customer.assignedTo.toString() : null;
+      if (assignedTo !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+    }
+
+    // Delete customer and related interactions
+    await Interaction.deleteMany({ customerId: customer._id });
+    await Customer.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({ success: true, message: 'Customer and related interactions deleted' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

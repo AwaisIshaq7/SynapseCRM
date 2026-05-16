@@ -7,14 +7,18 @@ import {
 import { useDashboard } from '../hooks/useDashboard'
 import { useAuth } from '../hooks/useAuth'
 import LoadingSpinner from '../components/LoadingSpinner'
+import { storage } from '../utils/storage'
+import toast from 'react-hot-toast'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
 export default function ReportsPage() {
   const { user } = useAuth()
   const [days, setDays] = useState(7)
+  const [exporting, setExporting] = useState(false)
   const { summary, sentimentTrend, churnDist, loading } = useDashboard(days)
   const isDark = user?.preferences?.theme === 'dark'
+  const canExport = ['admin', 'sales_manager'].includes(user?.role)
 
   const gridColor  = isDark ? 'rgba(148,163,184,0.16)' : 'rgba(148,163,184,0.2)'
   const tickColor  = isDark ? '#9ca3af' : '#6b7280'
@@ -138,11 +142,74 @@ export default function ReportsPage() {
     },
   }
 
+  const exportCustomersReport = async () => {
+    setExporting(true)
+    try {
+      const response = await fetch('/api/reports/customers/report', {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${storage.getToken()}`,
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error(`Export failed with status ${response.status}`)
+      }
+
+      const blob = await response.blob()
+      if (!blob.size) {
+        throw new Error('Report blob is empty')
+      }
+
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'customers-report.html'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success('Customer report exported successfully!')
+    } catch (error) {
+      console.error('❌ Customer report export error:', error)
+      toast.error('Failed to export customer report: ' + error.message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
         <div className="page-section-enter rounded-2xl bg-linear-to-r from-purple-50/50 to-pink-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & Analytics</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Visual breakdown of customer sentiment and churn risk</p>
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & Analytics</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Visual breakdown of customer sentiment and churn risk</p>
+          </div>
+          {canExport && (
+            <button
+              onClick={exportCustomersReport}
+              disabled={exporting}
+              className="group inline-flex items-center gap-3 rounded-2xl border border-transparent bg-linear-to-r from-fuchsia-500 via-purple-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_16px_35px_-18px_rgba(124,58,237,0.9)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_-16px_rgba(124,58,237,1)] active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[0_16px_35px_-18px_rgba(124,58,237,0.9)] dark:from-fuchsia-500 dark:via-purple-600 dark:to-indigo-500"
+            >
+              {exporting ? (
+                <span className="flex items-center gap-2">
+                  <LoadingSpinner size="sm" />
+                  <span className="tracking-wide">Exporting</span>
+                </span>
+              ) : (
+                <>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/20 transition-transform duration-300 group-hover:scale-105">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </span>
+                  <span className="tracking-wide">Export Report</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (

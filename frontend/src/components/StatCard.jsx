@@ -1,24 +1,26 @@
 import clsx from 'clsx'
 import LoadingSpinner from './LoadingSpinner'
 
-/**
- * Dashboard KPI stat card — shows icon, label, value, optional change indicator
- */
 export default function StatCard({
   label,
   value,
   icon,
-  trend,          // 'up' | 'down' | null
+  trend,
+  trendDown = false,
   trendValue,
   colorClass = 'text-brand-600 bg-gradient-to-br from-brand-100 to-brand-50 dark:from-brand-900/40 dark:to-brand-900/20',
   loading = false,
   onClick,
 }) {
+  const hasTrend = trendValue || Number.isFinite(trend)
+  const trendDirection = trend > 0 ? 'Up' : trend < 0 ? 'Down' : 'No change'
+  const trendIsGood = trendDown ? trend <= 0 : trend >= 0
+
   return (
     <div
       className={clsx(
-        'card group transition-all duration-700 ease-out hover:shadow-2xl',
-        onClick && 'cursor-pointer hover:-translate-y-2'
+        'card group transition-all duration-300 hover:-translate-y-1 hover:shadow-xl',
+        onClick && 'cursor-pointer'
       )}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
@@ -26,28 +28,27 @@ export default function StatCard({
       onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
       aria-label={onClick ? `${label}: ${value}. Click to view details.` : undefined}
     >
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{label}</p>
           {loading ? (
             <LoadingSpinner size="sm" className="mt-2" />
           ) : (
             <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-white">
-              {value ?? '—'}
+              {value ?? '-'}
             </p>
           )}
-          {trendValue && (
+          {hasTrend && (
             <p className={clsx(
-              'mt-1 text-sm font-medium',
-              trend === 'up'   ? 'text-green-600' : '',
-              trend === 'down' ? 'text-red-600'   : 'text-gray-500'
+              'mt-1 text-xs font-semibold',
+              trend === 0 ? 'text-gray-500' : trendIsGood ? 'text-green-600' : 'text-red-600'
             )}>
-              {trend === 'up' ? '↑' : trend === 'down' ? '↓' : ''} {trendValue}
+              {trendDirection} {trendValue || Math.abs(trend)}
             </p>
           )}
         </div>
         {icon && (
-          <div className={clsx('p-3 rounded-xl transition-all duration-700 ease-out group-hover:scale-125', colorClass)}>
+          <div className={clsx('rounded-xl p-3 transition-transform duration-300 group-hover:scale-110', colorClass)}>
             {icon}
           </div>
         )}

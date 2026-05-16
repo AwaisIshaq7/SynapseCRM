@@ -4,6 +4,7 @@ const Interaction = require('../models/Interaction');
 const User = require('../models/User');
 const axios = require('axios');
 const { sendChurnAlert } = require('./emailService');
+const { createChurnNotification } = require('../controllers/notificationController');
 
 const refreshAllChurnScores = async () => {
   try {
@@ -71,6 +72,7 @@ const refreshAllChurnScores = async () => {
               customer.name,
               churnScore
             );
+            await createChurnNotification(manager._id, customer.name, churnScore);
           }
         }
 

@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
-const { sendPasswordResetEmail, shouldExposeResetArtifacts } = require('../services/emailService');
+const { sendPasswordResetEmail } = require('../services/emailService');
 
 const generateToken = (id, expiresIn = '1h') => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn });
@@ -10,7 +10,11 @@ const generateToken = (id, expiresIn = '1h') => {
 // POST /api/auth/register
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role = 'sales_manager' } = req.body;
+
+    if (['admin', 'admin2'].includes(role) && process.env.ALLOW_ADMIN_REGISTRATION !== 'true') {
+      return res.status(403).json({ success: false, error: 'Admin registration is disabled' });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -83,7 +87,6 @@ exports.getMe = async (req, res) => {
 };
 
 // POST /api/auth/forgot-password
-// POST /api/auth/forgot-password
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -96,10 +99,8 @@ exports.forgotPassword = async (req, res) => {
     if (!user) {
       // Don't reveal if email exists (security best practice)
       return res.status(200).json({ 
-        success: true,
-        data: {
-          message: 'If an account with that email exists, a password reset link has been sent.',
-        },
+        success: true, 
+        data: { message: 'If an account with that email exists, a password reset link has been sent.' },
         error: null,
       });
     }
@@ -108,29 +109,21 @@ exports.forgotPassword = async (req, res) => {
     const resetToken = user.generateResetToken();
     await user.save();
 
-    const frontendBaseUrl = process.env.FRONTEND_URL || req.get('origin') || 'http://localhost:5173';
-    const resetLink = `${frontendBaseUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
-    const mailResult = await sendPasswordResetEmail({
-      to: user.email,
-      name: user.name,
-      resetLink,
-    });
-    
-    console.log(`📧 Password reset requested for ${email}`);
+    const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
+    const resetLink = `${frontendUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
-    const responseData = {
-      message: 'Password reset instructions have been sent to your email',
-    };
+    await sendPasswordResetEmail(user.email, user.name, resetLink);
 
-    if (shouldExposeResetArtifacts()) {
-      responseData.resetToken = resetToken;
-      responseData.resetLink = resetLink;
-      responseData.mailMode = mailResult.mode;
-    }
+    const data = process.env.NODE_ENV === 'test'
+      ? { resetToken, resetLink, mailMode: 'smtp_or_skipped' }
+      : null;
 
     res.status(200).json({
       success: true,
-      data: responseData,
+      data: {
+        message: 'If an account with that email exists, a password reset link has been sent.',
+        ...(data || {}),
+      },
       error: null,
     });
   } catch (err) {
@@ -178,15 +171,32 @@ exports.resetPassword = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: {
-        message: 'Password has been reset successfully',
-      },
+      data: { message: 'Password has been reset successfully' },
       error: null,
     });
   } catch (err) {
     res.status(500).json({ success: false, data: null, error: err.message });
   }
 };
+
+// GET /api/auth/validate-reset/:token
+exports.validateResetToken = async (req, res) => {
+  try {
+    const { token } = req.params
+    if (!token) return res.status(400).json({ success: false, data: null, error: 'Token required' })
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+    const user = await User.findOne({ resetToken: hashedToken, resetTokenExpiry: { $gt: Date.now() } })
+
+    if (!user) {
+      return res.status(400).json({ success: false, data: null, error: 'Invalid or expired reset token' })
+    }
+
+    res.status(200).json({ success: true, data: { email: user.email }, error: null })
+  } catch (err) {
+    res.status(500).json({ success: false, data: null, error: err.message })
+  }
+}
 
 // PUT /api/auth/change-password (for logged-in users)
 exports.changePassword = async (req, res) => {

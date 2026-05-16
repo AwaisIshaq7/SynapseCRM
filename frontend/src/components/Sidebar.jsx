@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuth } from '../hooks/useAuth'
-import LogoIcon from './LogoIcon'
+import Logo from './Logo'
 
 const NAV_ITEMS = [
   {
@@ -86,22 +86,10 @@ export default function Sidebar() {
       role="navigation"
       aria-label="Main navigation"
     >
-     {/* Logo */}
-<div className="flex h-18 items-center gap: 1px] border-b border-slate-100/70 px-10 dark:border-slate-700/70">
-  <div className="mt-1">
-  <LogoIcon size={102} decorative={false} className="mt-9" />
-</div>
-
-  <div className="flex flex-col">
-    <h1 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-      SynapseCRM
-    </h1>
-
-    <p className="text-xs text-slate-500 dark:text-slate-400">
-         AI Powered CRM
-    </p>
-  </div>
-</div>
+      {/* Logo */}
+      <div className="flex h-28 items-center justify-center px-6">
+        <Logo size={user?.role === 'admin' ? 'normal' : 'small'} className="w-auto h-auto" />
+      </div>
       {/* Navigation links */}
       <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-4">
         {visibleItems.map(item => (

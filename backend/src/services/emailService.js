@@ -1,116 +1,56 @@
 const nodemailer = require('nodemailer');
 
-const mailUser = process.env.SMTP_USER || process.env.EMAIL_USER;
-const mailPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+const isMailConfigured = () => Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 
-let mailTransporter = null;
+const createTransport = () => nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
-function getMailTransport() {
-  if (!mailUser || !mailPass) {
-    return null;
+const sendMail = async ({ to, subject, html, text }) => {
+  if (!isMailConfigured()) {
+    console.warn('Email skipped: SMTP_USER and SMTP_PASS are not configured');
+    return { skipped: true };
   }
 
-  if (!mailTransporter) {
-    mailTransporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: mailUser,
-        pass: mailPass,
-      },
-    });
-  }
-
-  return mailTransporter;
-}
-
-function isMailConfigured() {
-  return Boolean(mailUser && mailPass);
-}
-
-function shouldExposeResetArtifacts() {
-  return process.env.NODE_ENV !== 'production' || process.env.AUTH_DEBUG_RESET_LINK === 'true';
-}
-
-function getMailFrom() {
-  return process.env.EMAIL_FROM
-    || process.env.SMTP_FROM
-    || process.env.SMTP_USER
-    || process.env.EMAIL_USER
-    || 'SynapseCRM <no-reply@synapsecrm.local>';
-}
-
-async function sendMail(message) {
-  const transport = getMailTransport();
-
-  if (!transport) {
-    throw new Error('Gmail SMTP is not configured. Set SMTP_USER and SMTP_PASS before sending mail in production.');
-  }
-
-  return transport.sendMail(message);
-}
-
-async function sendPasswordResetEmail({ to, name, resetLink }) {
-  const subject = 'Reset your SynapseCRM password';
-  const greetingName = name || 'there';
-  const text = [
-    `Hi ${greetingName},`,
-    '',
-    'We received a request to reset your SynapseCRM password.',
-    `Use this link to reset it: ${resetLink}`,
-    '',
-    'This link expires in 15 minutes.',
-    '',
-    'If you did not request this reset, you can ignore this email.',
-  ].join('\n');
-
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #111827;">
-      <h2 style="margin-bottom: 16px;">Reset your SynapseCRM password</h2>
-      <p>Hi ${greetingName},</p>
-      <p>We received a request to reset your SynapseCRM password.</p>
-      <p>
-        <a href="${resetLink}" style="display:inline-block;background:#4f46e5;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:8px;">
-          Reset password
-        </a>
-      </p>
-      <p>If the button does not work, copy and paste this link into your browser:</p>
-      <p><a href="${resetLink}">${resetLink}</a></p>
-      <p>This link expires in 15 minutes.</p>
-      <p>If you did not request this reset, you can ignore this email.</p>
-    </div>
-  `;
-
-  const configured = isMailConfigured();
-
-  if (!configured) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error('Gmail SMTP is not configured. Set SMTP_USER and SMTP_PASS before using password reset in production.');
-    }
-
-    console.warn('⚠️ SMTP is not configured. Password reset email was not sent.');
-    console.log(`Reset link for ${to}: ${resetLink}`);
-    return { sent: false, mode: 'console', provider: 'gmail' };
-  }
-
-  if (process.env.NODE_ENV === 'test') {
-    return { sent: false, mode: 'console', provider: 'gmail' };
-  }
-
-  await sendMail({
-    from: getMailFrom(),
+  const transporter = createTransport();
+  return transporter.sendMail({
+    from: process.env.EMAIL_FROM || `SynapseCRM <${process.env.SMTP_USER}>`,
     to,
     subject,
-    text,
     html,
+    text,
   });
+};
 
-  return { sent: true, mode: 'gmail', provider: 'gmail' };
-}
+const sendPasswordResetEmail = async (to, name, resetLink) => sendMail({
+  to,
+  subject: 'Reset your SynapseCRM password',
+  text: `Hi ${name || 'there'}, reset your password here: ${resetLink}`,
+  html: `<p>Hi ${name || 'there'},</p><p>Reset your password here: <a href="${resetLink}">${resetLink}</a></p>`,
+});
+
+const sendChurnAlert = async (to, managerName, customerName, churnScore) => sendMail({
+  to,
+  subject: 'High churn risk alert',
+  text: `${customerName} has high churn risk (${Math.round(churnScore * 100)}%).`,
+  html: `<p>Hi ${managerName || 'there'},</p><p><strong>${customerName}</strong> has high churn risk (${Math.round(churnScore * 100)}%).</p>`,
+});
+
+const sendSentimentAlert = async (to, managerName, customerName) => sendMail({
+  to,
+  subject: 'Negative sentiment alert',
+  text: `${customerName} has three recent negative interactions.`,
+  html: `<p>Hi ${managerName || 'there'},</p><p><strong>${customerName}</strong> has three recent negative interactions.</p>`,
+});
 
 module.exports = {
+  isMailConfigured,
   sendMail,
   sendPasswordResetEmail,
-  isMailConfigured,
-  shouldExposeResetArtifacts,
-  getMailFrom,
+  sendChurnAlert,
+  sendSentimentAlert,
 };

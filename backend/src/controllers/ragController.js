@@ -3,9 +3,19 @@ const Customer = require('../models/Customer');
 const Interaction = require('../models/Interaction');
 const { prepareEmbeddingText } = require('../services/vectorSearch');
 
-const groq = new Groq({
-  apiKey: process.env.GROQ_API_KEY,
-});
+let groqClient = null;
+
+function getGroqClient() {
+  if (!process.env.GROQ_API_KEY) {
+    return null;
+  }
+
+  if (!groqClient) {
+    groqClient = new Groq({ apiKey: process.env.GROQ_API_KEY });
+  }
+
+  return groqClient;
+}
 
 function calculateRelevanceScore(interaction) {
   let score = 1.0;
@@ -129,9 +139,14 @@ ${index + 1}. [${new Date(interaction.date).toDateString()}] ${interaction.custo
 exports.queryCustomerData = async (req, res) => {
   try {
     const { question, customerId } = req.body;
+    const groq = getGroqClient();
 
     if (!question) {
       return res.status(400).json({ success: false, data: null, error: 'Question is required' });
+    }
+
+    if (!groq) {
+      return res.status(503).json({ success: false, data: null, error: 'AI assistant is not configured' });
     }
 
     let metrics = {};
@@ -143,6 +158,14 @@ exports.queryCustomerData = async (req, res) => {
       const customer = await Customer.findById(customerId);
       if (!customer) {
         return res.status(404).json({ success: false, data: null, error: 'Customer not found' });
+      }
+
+      // Enforce sales_manager can only query their assigned customers
+      if (req.user.role === 'sales_manager') {
+        const assignedTo = customer.assignedTo ? customer.assignedTo.toString() : null;
+        if (assignedTo !== req.user._id.toString()) {
+          return res.status(403).json({ success: false, data: null, error: 'Access denied' });
+        }
       }
 
       const interactions = await getRelevantInteractions(customerId, 20, 90);
@@ -179,15 +202,25 @@ CUSTOMER INFORMATION:
       contextText = formatInteractionHistory(interactions);
       vectorReadyText = prepareEmbeddingText(customer, interactions);
     } else {
-      const atRiskCustomers = await Customer.find({ churnScore: { $gte: 0.6 } })
+      const recentCutoff = new Date();
+      recentCutoff.setDate(recentCutoff.getDate() - 30);
+      let atRiskFilter = { churnScore: { $gte: 0.6 } };
+      let recentFilter = { date: { $gte: recentCutoff } };
+
+      // If sales_manager, restrict to their assigned customers
+      if (req.user.role === 'sales_manager') {
+        const myCustomers = await Customer.find({ assignedTo: req.user._id }).select('_id');
+        const ids = myCustomers.map(c => c._id);
+        atRiskFilter.assignedTo = req.user._id;
+        recentFilter.customerId = { $in: ids };
+      }
+
+      const atRiskCustomers = await Customer.find(atRiskFilter)
         .select('name company churnScore overallSentiment status')
         .sort({ churnScore: -1 })
         .limit(10);
 
-      const recentCutoff = new Date();
-      recentCutoff.setDate(recentCutoff.getDate() - 30);
-
-      const recentInteractions = await Interaction.find({ date: { $gte: recentCutoff } })
+      const recentInteractions = await Interaction.find(recentFilter)
         .sort({ date: -1 })
         .limit(15)
         .populate('customerId', 'name company status')
@@ -268,11 +301,22 @@ Based ONLY on the data above, provide a concise, actionable answer.`;
 // POST /api/rag/summarize/:customerId
 exports.summarizeCustomer = async (req, res) => {
   try {
+    const groq = getGroqClient();
+    if (!groq) {
+      return res.status(503).json({ success: false, data: null, error: 'AI assistant is not configured' });
+    }
+
     const customer = await Customer.findById(req.params.customerId);
     if (!customer) {
       return res.status(404).json({ success: false, data: null, error: 'Customer not found' });
     }
-
+    // Enforce sales_manager can only summarize their assigned customers
+    if (req.user.role === 'sales_manager') {
+      const assignedTo = customer.assignedTo ? customer.assignedTo.toString() : null;
+      if (assignedTo !== req.user._id.toString()) {
+        return res.status(403).json({ success: false, data: null, error: 'Access denied' });
+      }
+    }
     const interactions = await getRelevantInteractions(req.params.customerId, 20, 90);
 
     if (interactions.length === 0) {

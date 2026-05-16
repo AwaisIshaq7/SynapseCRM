@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import ThemeToggle from './ThemeToggle'
-import Logo from './Logo'
+import MyCRMLogo from '../assets/MyCRMLOGO.svg'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
@@ -10,10 +10,15 @@ export default function Navbar() {
     <header
       className="sticky top-0 z-20 flex h-18 shrink-0 items-center justify-between border-b border-slate-200/70 bg-white/75 px-4 shadow-[0_1px_0_rgba(255,255,255,0.6)] backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/70 md:px-6"
       role="banner"
-    >
+      >
       {/* Logo + App name — visible on mobile when sidebar is hidden */}
       <Link to="/dashboard" className="flex items-center md:hidden">
-        <Logo size="small" />
+        <img
+          src={MyCRMLogo}
+          alt="SynapseCRM Logo"
+          className="h-10 w-auto"
+          style={{ filter: 'brightness(0) saturate(100%) invert(25%) sepia(98%) saturate(3000%) hue-rotate(250deg) brightness(100%) contrast(95%)' }}
+        />
       </Link>
 
       <div className="hidden md:block">

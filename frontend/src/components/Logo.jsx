@@ -5,8 +5,8 @@
 export default function Logo({ size = 'normal', className = '' }) {
   const sizeMap = {
     small: { width: 160, height: 60, viewBox: '0 0 540 150' },
-    normal: { width: 300, height: 80, viewBox: '0 0 540 150' },
-    large: { width: 220, height: 70, viewBox: '0 0 540 150' },
+    normal: { width: 320, height: 90, viewBox: '0 0 540 150' },
+    large: { width: 420, height: 120, viewBox: '0 0 540 150' },
   };
 
   const sizeConfig = sizeMap[size] || sizeMap.normal;
@@ -21,31 +21,16 @@ export default function Logo({ size = 'normal', className = '' }) {
       className={`${className} transition-transform hover:scale-105`}
     >
       <defs>
-        {/* Elegant animated gradient */}
+        {/* Neon pink/purple animated gradient (matches provided image) */}
         <linearGradient id="luxGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#8B5CF6">
-            <animate
-              attributeName="stopColor"
-              values="#8B5CF6;#06B6D4;#8B5CF6"
-              dur="4s"
-              repeatCount="indefinite"
-            />
+          <stop offset="0%" stopColor="#FF6FD8">
+            <animate attributeName="stopColor" values="#FF6FD8;#B794F4;#FF6FD8" dur="4s" repeatCount="indefinite" />
           </stop>
-          <stop offset="50%" stopColor="#06B6D4">
-            <animate
-              attributeName="stopColor"
-              values="#06B6D4;#EC4899;#06B6D4"
-              dur="4s"
-              repeatCount="indefinite"
-            />
+          <stop offset="50%" stopColor="#8B5CF6">
+            <animate attributeName="stopColor" values="#8B5CF6;#D946EF;#8B5CF6" dur="4s" repeatCount="indefinite" />
           </stop>
-          <stop offset="100%" stopColor="#EC4899">
-            <animate
-              attributeName="stopColor"
-              values="#EC4899;#8B5CF6;#EC4899"
-              dur="4s"
-              repeatCount="indefinite"
-            />
+          <stop offset="100%" stopColor="#D946EF">
+            <animate attributeName="stopColor" values="#D946EF;#FF6FD8;#D946EF" dur="4s" repeatCount="indefinite" />
           </stop>
         </linearGradient>
 
@@ -72,7 +57,7 @@ export default function Logo({ size = 'normal', className = '' }) {
         <animate attributeName="r" values="40;50;40" dur="5s" repeatCount="indefinite" />
       </circle>
 
-      <circle cx="430" cy="120" r="30" fill="#06B6D4" opacity="0.08">
+      <circle cx="430" cy="120" r="30" fill="#D946EF" opacity="0.08">
         <animate attributeName="r" values="30;38;30" dur="4s" repeatCount="indefinite" />
       </circle>
 
@@ -96,24 +81,24 @@ export default function Logo({ size = 'normal', className = '' }) {
         </path>
 
         {/* Nodes */}
-        <circle cx="30" cy="40" r="8" fill="#8B5CF6" filter="url(#glow)">
+        <circle cx="30" cy="40" r="8" fill="#FF6FD8" filter="url(#glow)">
           <animate attributeName="r" values="8;11;8" dur="1.5s" repeatCount="indefinite" />
         </circle>
 
-        <circle cx="70" cy="15" r="8" fill="#06B6D4" filter="url(#glow)">
+        <circle cx="70" cy="15" r="8" fill="#8B5CF6" filter="url(#glow)">
           <animate attributeName="r" values="8;12;8" dur="1.8s" repeatCount="indefinite" />
         </circle>
 
-        <circle cx="110" cy="40" r="8" fill="#EC4899" filter="url(#glow)">
+        <circle cx="110" cy="40" r="8" fill="#D946EF" filter="url(#glow)">
           <animate attributeName="r" values="8;11;8" dur="1.5s" repeatCount="indefinite" />
         </circle>
 
-        <circle cx="70" cy="65" r="8" fill="#06B6D4" filter="url(#glow)">
+        <circle cx="70" cy="65" r="8" fill="#8B5CF6" filter="url(#glow)">
           <animate attributeName="r" values="8;12;8" dur="1.8s" repeatCount="indefinite" />
         </circle>
 
         {/* Center pulse */}
-        <circle cx="70" cy="40" r="5" fill="#F8FAFC">
+        <circle cx="70" cy="40" r="5" fill="#FFFFFF">
           <animate attributeName="r" values="5;15;5" dur="1s" repeatCount="indefinite" />
           <animate attributeName="opacity" values="0.5;0.1;0.5" dur="4.6s" repeatCount="indefinite" />
         </circle>

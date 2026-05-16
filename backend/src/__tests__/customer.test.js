@@ -7,6 +7,9 @@ const Customer = require('../models/Customer');
 let token;
 let customerId;
 
+const TEST_ADMIN_EMAIL = 'testadmin.customer@example.com';
+const TEST_ADMIN_PASSWORD = 'TestPass123';
+
 beforeAll(async () => {
   try {
     // Ensure connection is ready (jest.setup.js handles initial connection)
@@ -27,27 +30,29 @@ beforeAll(async () => {
     // Clean up test data from previous runs
     if (mongoose.connection.readyState === 1) {
       await Customer.deleteMany({ email: /testcustomer/ });
-      await User.deleteMany({ email: /testadmin/ });
+      await User.deleteMany({ email: TEST_ADMIN_EMAIL });
     }
 
-    // Register and login test user
-    await request(app)
-      .post('/api/auth/register')
-      .send({
-        name: 'Test Admin',
-        email: 'testadmin@example.com',
-        password: 'TestPass123',
-        role: 'admin',
-      });
+    // Seed a dedicated admin directly so the suite does not depend on existing data
+    await User.create({
+      name: 'Test Admin',
+      email: TEST_ADMIN_EMAIL,
+      password: TEST_ADMIN_PASSWORD,
+      role: 'admin',
+    });
 
     const loginRes = await request(app)
       .post('/api/auth/login')
       .send({
-        email: 'testadmin@example.com',
-        password: 'TestPass123',
+        email: TEST_ADMIN_EMAIL,
+        password: TEST_ADMIN_PASSWORD,
       });
 
-    token = loginRes.body.data.token;
+    token = loginRes.body?.data?.token;
+
+    if (!token) {
+      throw new Error(loginRes.body?.error || 'Failed to obtain auth token for customer tests');
+    }
   } catch (error) {
     console.error('beforeAll error:', error.message);
     throw error;
@@ -58,7 +63,7 @@ afterAll(async () => {
   try {
     if (mongoose.connection.readyState === 1) {
       await Customer.deleteMany({ email: /testcustomer/ });
-      await User.deleteMany({ email: /testadmin/ });
+      await User.deleteMany({ email: TEST_ADMIN_EMAIL });
     }
     // jest.setup.js handles connection close
   } catch (error) {

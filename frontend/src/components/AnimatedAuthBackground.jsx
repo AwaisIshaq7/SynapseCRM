@@ -4,15 +4,28 @@
  * Creates a professional tech/neural network vibe for auth pages
  */
 
+const PARTICLE_SEED = [
+  { x: 12, y: 22, size: 3.5, duration: 27, delay: 0.4 },
+  { x: 18, y: 68, size: 4.1, duration: 31, delay: 1.2 },
+  { x: 26, y: 38, size: 2.9, duration: 29, delay: 0.7 },
+  { x: 34, y: 81, size: 5.0, duration: 33, delay: 2.1 },
+  { x: 41, y: 18, size: 3.0, duration: 26, delay: 1.8 },
+  { x: 48, y: 55, size: 4.6, duration: 34, delay: 0.9 },
+  { x: 55, y: 29, size: 3.3, duration: 30, delay: 2.6 },
+  { x: 62, y: 74, size: 4.8, duration: 28, delay: 1.5 },
+  { x: 69, y: 41, size: 2.7, duration: 35, delay: 0.2 },
+  { x: 74, y: 86, size: 4.2, duration: 32, delay: 2.8 },
+  { x: 80, y: 24, size: 3.8, duration: 29, delay: 1.1 },
+  { x: 86, y: 60, size: 4.4, duration: 36, delay: 2.0 },
+  { x: 90, y: 35, size: 3.1, duration: 28, delay: 0.6 },
+  { x: 94, y: 77, size: 4.9, duration: 30, delay: 1.9 },
+  { x: 96, y: 14, size: 2.8, duration: 34, delay: 2.3 },
+]
+
 export default function AnimatedAuthBackground() {
-  // Generate random particles - increased size for more visibility
-  const particles = Array.from({ length: 15 }, (_, i) => ({
-    id: i,
-    x: Math.random() * 100,
-    y: Math.random() * 100,
-    size: Math.random() * 5 + 2.5,
-    duration: Math.random() * 20 + 25,
-    delay: Math.random() * 5,
+  const particles = PARTICLE_SEED.map((particle, index) => ({
+    id: index,
+    ...particle,
   }))
 
   return (

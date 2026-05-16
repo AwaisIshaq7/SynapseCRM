@@ -25,7 +25,16 @@ export default function RegisterPage() {
     if (!formData.email) errs.email = 'Email is required'
     else if (!/\S+@\S+\.\S+/.test(formData.email)) errs.email = 'Enter a valid email'
     if (!formData.password) errs.password = 'Password is required'
-    else if (formData.password.length < 6) errs.password = 'Minimum 6 characters'
+    else {
+      const pwd = formData.password
+      const checks = []
+      if (pwd.length < 8) checks.push('at least 8 characters')
+      if (!/[A-Z]/.test(pwd)) checks.push('an uppercase letter')
+      if (!/[a-z]/.test(pwd)) checks.push('a lowercase letter')
+      if (!/[0-9]/.test(pwd)) checks.push('a number')
+      if (!/[!@#$%^&*]/.test(pwd)) checks.push('a special character')
+      if (checks.length) errs.password = `Password must contain ${checks.join(', ')}`
+    }
     if (formData.password !== formData.confirmPassword) errs.confirmPassword = 'Passwords do not match'
     return errs
   }
@@ -237,7 +246,7 @@ export default function RegisterPage() {
                     value={formData.password}
                     onChange={handleChange}
                     className={`input ${errors.password ? 'border-red-500' : ''}`}
-                    placeholder="Minimum 6 characters"
+                    placeholder="Minimum 8 characters"
                     disabled={loading}
                     aria-invalid={!!errors.password}
                   />

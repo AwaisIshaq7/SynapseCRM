@@ -18,6 +18,7 @@ router.get('/', getCustomers);
 router.post('/', createCustomer);
 router.get('/:id', getCustomer);
 router.put('/:id', updateCustomer);
-router.delete('/:id', authorize('admin'), deleteCustomer); // Admin only
+// Allow admins and sales managers; controller will enforce ownership checks
+router.delete('/:id', authorize('admin', 'sales_manager'), deleteCustomer);
 
 module.exports = router;

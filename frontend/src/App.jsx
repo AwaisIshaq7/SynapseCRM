@@ -59,8 +59,12 @@ export default function App() {
         element={user ? <Navigate to="/dashboard" replace /> : <ForgotPasswordPage />}
       />
       <Route
+        path="/reset-password"
+        element={<ResetPasswordPage />}
+      />
+      <Route
         path="/reset-password/:token"
-        element={user ? <Navigate to="/dashboard" replace /> : <ResetPasswordPage />}
+        element={<ResetPasswordPage />}
       />
 
       {/* Protected routes — require authentication */}

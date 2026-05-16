@@ -15,7 +15,7 @@ const STATUS_FILTERS = [
 ]
 
 export default function CustomerListPage() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isSalesManager, user } = useAuth()
   const navigate = useNavigate()
   const [searchInput, setSearchInput] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
@@ -134,7 +134,7 @@ export default function CustomerListPage() {
             <div key={customer._id} role="listitem" className="relative group/item">
               <CustomerCard customer={customer} />
               {/* Delete button — only visible to admin on hover */}
-              {isAdmin && (
+              {(isAdmin || (isSalesManager && customer.assignedTo?._id?.toString() === user?._id?.toString())) && (
                 <button
                   onClick={() => handleDelete(customer._id, customer.name)}
                   className="absolute top-3 right-3 p-1.5 rounded-lg bg-red-100 text-red-600

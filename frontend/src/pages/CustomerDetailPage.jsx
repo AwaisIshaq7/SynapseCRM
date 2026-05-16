@@ -18,7 +18,7 @@ const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note']
 export default function CustomerDetailPage() {
   const { id }       = useParams()
   const navigate     = useNavigate()
-  const { isAdmin }  = useAuth()
+  const { isAdmin, isSalesManager, user }  = useAuth()
   const { customer, loading, error } = useCustomer(id)
 
   const [interactions,      setInteractions]      = useState([])
@@ -153,7 +153,7 @@ export default function CustomerDetailPage() {
             <Link to={`/customers/${id}/edit`} className="btn-secondary text-sm">
               ✏️ Edit
             </Link>
-            {isAdmin && (
+            {(isAdmin || (isSalesManager && customer.assignedTo?._id?.toString() === user?._id?.toString())) && (
               <button
                 onClick={() => {
                   if (window.confirm('Delete this customer? This cannot be undone.')) {
@@ -296,7 +296,7 @@ export default function CustomerDetailPage() {
                       <span className="text-xs text-gray-400" title={formatDate(interaction.date)}>
                         {timeAgo(interaction.date)}
                       </span>
-                      {isAdmin && (
+                      {(isAdmin || (isSalesManager && (interaction.userId?._id?.toString?.() || interaction.userId?.toString()) === user?._id?.toString())) && (
                         <button
                           onClick={() => handleDeleteInteraction(interaction._id)}
                           className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50

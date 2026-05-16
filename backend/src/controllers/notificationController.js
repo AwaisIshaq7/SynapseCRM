@@ -39,3 +39,16 @@ exports.createChurnNotification = async (userId, customerName, churnScore) => {
     console.error('Failed to create notification:', error)
   }
 }
+
+exports.createSentimentNotification = async (userId, customerName) => {
+  try {
+    await Notification.create({
+      userId,
+      type: 'sentiment_alert',
+      message: `${customerName} has three consecutive negative interactions`,
+      data: { customerName }
+    })
+  } catch (error) {
+    console.error('Failed to create sentiment notification:', error)
+  }
+}

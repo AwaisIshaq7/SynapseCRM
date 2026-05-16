@@ -1,47 +1,90 @@
 const Customer = require('../models/Customer');
 const Interaction = require('../models/Interaction');
 const SentimentLog = require('../models/SentimentLog');
+const User = require('../models/User');
 
-// GET /api/dashboard/summary
+const getScopedCustomerIds = async (req) => {
+  if (req.user.role !== 'sales_manager') return null;
+  const customers = await Customer.find({ assignedTo: req.user._id }).select('_id');
+  return customers.map((customer) => customer._id);
+};
+
+const parseTrendDays = (query) => {
+  if (query.from && query.to) {
+    const from = new Date(query.from);
+    const to = new Date(query.to);
+    if (!Number.isNaN(from.getTime()) && !Number.isNaN(to.getTime()) && to >= from) {
+      return Math.min(Math.max(Math.ceil((to - from) / (1000 * 60 * 60 * 24)) + 1, 1), 90);
+    }
+  }
+
+  if (query.range) {
+    const match = String(query.range).match(/^(\d+)d$/);
+    if (match) return Math.min(Math.max(parseInt(match[1], 10), 1), 90);
+  }
+
+  return Math.min(Math.max(parseInt(query.days, 10) || 7, 1), 90);
+};
+
 exports.getSummary = async (req, res) => {
   try {
     let customerFilter = {};
-
-    // sales_manager only sees their assigned customers
     if (req.user.role === 'sales_manager') {
       customerFilter.assignedTo = req.user._id;
     }
 
     const totalCustomers = await Customer.countDocuments(customerFilter);
     const atRiskCount = await Customer.countDocuments({ ...customerFilter, status: 'at_risk' });
+    const activeCount = await Customer.countDocuments({ ...customerFilter, status: 'active' });
     const positiveCount = await Customer.countDocuments({ ...customerFilter, overallSentiment: 'positive' });
     const negativeCount = await Customer.countDocuments({ ...customerFilter, overallSentiment: 'negative' });
 
-    // Get customers with high churn score
-    const churnAlerts = await Customer.find({
-      ...customerFilter,
-      churnScore: { $gte: 0.7 },
-    })
-      .select('name email churnScore status')
+    const churnAlerts = await Customer.find({ ...customerFilter, churnScore: { $gte: 0.7 } })
+      .select('name email churnScore status company')
       .sort({ churnScore: -1 })
       .limit(5);
 
-    // Get 5 most recent interactions
-    const recentInteractions = await Interaction.find()
-      .populate('customerId', 'name email')
+    let interactionFilter = {};
+    if (req.user.role === 'sales_manager') {
+      const myCustomers = await Customer.find({ assignedTo: req.user._id }).select('_id');
+      interactionFilter.customerId = { $in: myCustomers.map(c => c._id) };
+    }
+
+    const recentInteractions = await Interaction.find(interactionFilter)
+      .populate('customerId', 'name email company')
       .populate('userId', 'name')
       .sort({ createdAt: -1 })
       .limit(5);
+
+    let salesManagerStats = null;
+    if (req.user.role === 'admin') {
+      const managers = await User.find({ role: 'sales_manager' }).select('name email createdAt');
+      salesManagerStats = await Promise.all(
+        managers.map(async (manager) => {
+          const customerCount = await Customer.countDocuments({ assignedTo: manager._id });
+          const atRisk = await Customer.countDocuments({ assignedTo: manager._id, status: 'at_risk' });
+          return {
+            _id: manager._id,
+            name: manager.name,
+            email: manager.email,
+            customerCount,
+            atRiskCount: atRisk,
+          };
+        })
+      );
+    }
 
     res.status(200).json({
       success: true,
       data: {
         totalCustomers,
         atRiskCount,
+        activeCount,
         positiveCount,
         negativeCount,
         recentInteractions,
         churnAlerts,
+        salesManagerStats,
       },
     });
   } catch (err) {
@@ -49,72 +92,29 @@ exports.getSummary = async (req, res) => {
   }
 };
 
-// GET /api/dashboard/sentiment-trend?days=7 or ?range=7d or ?from=2024-01-01&to=2024-01-31
 exports.getSentimentTrend = async (req, res) => {
   try {
-    const { range = '7d', from, to, days } = req.query;
+    const days = parseTrendDays(req.query);
+    const labels = [], positiveData = [], neutralData = [], negativeData = [];
 
-    let startDate, endDate = new Date();
-    endDate.setHours(23, 59, 59, 999);
+    const customerIds = await getScopedCustomerIds(req);
 
-    if (from && to) {
-      // Custom date range
-      startDate = new Date(from);
-      startDate.setHours(0, 0, 0, 0);
-      endDate = new Date(to);
-      endDate.setHours(23, 59, 59, 999);
-    } else if (days) {
-      // Legacy support for days parameter
-      const daysNum = parseInt(days);
-      startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysNum);
-      startDate.setHours(0, 0, 0, 0);
-    } else {
-      // Default range support (7d, 14d, 30d, etc.)
-      const rangeMatch = range.match(/^(\d+)d$/);
-      const daysNum = rangeMatch ? parseInt(rangeMatch[1]) : 7;
-      startDate = new Date();
-      startDate.setDate(startDate.getDate() - daysNum);
-      startDate.setHours(0, 0, 0, 0);
-    }
-
-    // Calculate number of days for labels
-    const diffTime = Math.abs(endDate - startDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-
-    // Build date labels and aggregate data
-    const labels = [];
-    const positiveData = [];
-    const neutralData = [];
-    const negativeData = [];
-
-    for (let i = 0; i < diffDays; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
+    for (let i = days - 1; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
       date.setHours(0, 0, 0, 0);
-
       const nextDate = new Date(date);
       nextDate.setDate(nextDate.getDate() + 1);
-      nextDate.setHours(0, 0, 0, 0);
 
-      // Format label as "Apr 25"
-      const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-      labels.push(label);
+      labels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
 
-      // Count sentiments for that day
+      let baseFilter = { analyzedAt: { $gte: date, $lt: nextDate } };
+      if (customerIds) baseFilter.customerId = { $in: customerIds };
+
       const [pos, neu, neg] = await Promise.all([
-        SentimentLog.countDocuments({
-          sentimentLabel: 'positive',
-          analyzedAt: { $gte: date, $lt: nextDate },
-        }),
-        SentimentLog.countDocuments({
-          sentimentLabel: 'neutral',
-          analyzedAt: { $gte: date, $lt: nextDate },
-        }),
-        SentimentLog.countDocuments({
-          sentimentLabel: 'negative',
-          analyzedAt: { $gte: date, $lt: nextDate },
-        }),
+        SentimentLog.countDocuments({ ...baseFilter, sentimentLabel: 'positive' }),
+        SentimentLog.countDocuments({ ...baseFilter, sentimentLabel: 'neutral' }),
+        SentimentLog.countDocuments({ ...baseFilter, sentimentLabel: 'negative' }),
       ]);
 
       positiveData.push(pos);
@@ -124,11 +124,68 @@ exports.getSentimentTrend = async (req, res) => {
 
     res.status(200).json({
       success: true,
+      data: { labels, positive: positiveData, neutral: neutralData, negative: negativeData },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+exports.getKpiTrends = async (req, res) => {
+  try {
+    const now = new Date();
+    const currentStart = new Date(now);
+    currentStart.setDate(currentStart.getDate() - 30);
+
+    const previousStart = new Date(now);
+    previousStart.setDate(previousStart.getDate() - 60);
+
+    const customerFilter = {};
+    if (req.user.role === 'sales_manager') {
+      customerFilter.assignedTo = req.user._id;
+    }
+
+    const currentCustomerFilter = { ...customerFilter, createdAt: { $gte: currentStart } };
+    const previousCustomerFilter = {
+      ...customerFilter,
+      createdAt: { $gte: previousStart, $lt: currentStart },
+    };
+
+    const customerIds = await getScopedCustomerIds(req);
+    const scopedInteractions = customerIds ? { customerId: { $in: customerIds } } : {};
+    const currentInteractionFilter = { ...scopedInteractions, createdAt: { $gte: currentStart } };
+    const previousInteractionFilter = {
+      ...scopedInteractions,
+      createdAt: { $gte: previousStart, $lt: currentStart },
+    };
+
+    const [
+      currentCustomers,
+      previousCustomers,
+      currentAtRisk,
+      previousAtRisk,
+      currentPositive,
+      previousPositive,
+      currentNegative,
+      previousNegative,
+    ] = await Promise.all([
+      Customer.countDocuments(currentCustomerFilter),
+      Customer.countDocuments(previousCustomerFilter),
+      Customer.countDocuments({ ...currentCustomerFilter, status: 'at_risk' }),
+      Customer.countDocuments({ ...previousCustomerFilter, status: 'at_risk' }),
+      Interaction.countDocuments({ ...currentInteractionFilter, sentimentLabel: 'positive' }),
+      Interaction.countDocuments({ ...previousInteractionFilter, sentimentLabel: 'positive' }),
+      Interaction.countDocuments({ ...currentInteractionFilter, sentimentLabel: 'negative' }),
+      Interaction.countDocuments({ ...previousInteractionFilter, sentimentLabel: 'negative' }),
+    ]);
+
+    res.status(200).json({
+      success: true,
       data: {
-        labels,
-        positive: positiveData,
-        neutral: neutralData,
-        negative: negativeData,
+        totalCustomers: currentCustomers - previousCustomers,
+        atRiskCount: currentAtRisk - previousAtRisk,
+        positiveSentiment: currentPositive - previousPositive,
+        negativeSentiment: currentNegative - previousNegative,
       },
     });
   } catch (err) {
@@ -136,7 +193,6 @@ exports.getSentimentTrend = async (req, res) => {
   }
 };
 
-// GET /api/dashboard/churn-distribution
 exports.getChurnDistribution = async (req, res) => {
   try {
     let filter = {};
@@ -150,61 +206,65 @@ exports.getChurnDistribution = async (req, res) => {
       Customer.countDocuments({ ...filter, churnScore: { $lt: 0.4 } }),
     ]);
 
-    res.status(200).json({
-      success: true,
-      data: {
-        high,
-        medium,
-        low,
-      },
-    });
+    res.status(200).json({ success: true, data: { high, medium, low } });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-// GET /api/dashboard/trends - KPI Trends
-exports.getKPITrends = async (req, res) => {
+exports.getAdminOverview = async (req, res) => {
   try {
-    let customerFilter = {};
-    if (req.user.role === 'sales_manager') {
-      customerFilter.assignedTo = req.user._id;
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
     }
 
-    // Get current period counts
-    const currentTotal = await Customer.countDocuments(customerFilter);
-    const currentAtRisk = await Customer.countDocuments({ ...customerFilter, churnScore: { $gt: 0.6 } });
-    const currentPositive = await Interaction.countDocuments({ sentimentLabel: 'positive' });
-    const currentNegative = await Interaction.countDocuments({ sentimentLabel: 'negative' });
+    const totalCustomers = await Customer.countDocuments();
+    const totalManagers = await User.countDocuments({ role: 'sales_manager' });
+    const atRiskTotal = await Customer.countDocuments({ status: 'at_risk' });
+    const activeTotal = await Customer.countDocuments({ status: 'active' });
 
-    // Get previous period (7 days ago)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const managers = await User.find({ role: 'sales_manager' }).select('name email createdAt');
+    const managerDetails = await Promise.all(
+      managers.map(async (m) => {
+        const customers = await Customer.find({ assignedTo: m._id })
+          .select('name status churnScore overallSentiment company email createdAt lastContactDate assignedTo');
+        const atRisk = customers.filter(c => c.status === 'at_risk').length;
+        const active = customers.filter(c => c.status === 'active').length;
+        const inactive = customers.filter(c => c.status === 'inactive').length;
+        const avgChurn = customers.length
+          ? (customers.reduce((s, c) => s + c.churnScore, 0) / customers.length).toFixed(2)
+          : 0;
 
-    const previousTotal = await Customer.countDocuments({ ...customerFilter, createdAt: { $lt: sevenDaysAgo } });
-    const previousAtRisk = await Customer.countDocuments({
-      ...customerFilter,
-      churnScore: { $gt: 0.6 },
-      updatedAt: { $lt: sevenDaysAgo },
-    });
-    const previousPositive = await Interaction.countDocuments({ sentimentLabel: 'positive', createdAt: { $lt: sevenDaysAgo } });
-    const previousNegative = await Interaction.countDocuments({ sentimentLabel: 'negative', createdAt: { $lt: sevenDaysAgo } });
+        const recentInteractions = await Interaction.find({ customerId: { $in: customers.map(c => c._id) } })
+          .sort({ createdAt: -1 })
+          .limit(8)
+          .populate('customerId', 'name company email status')
+          .populate('userId', 'name role');
 
-    const calculateTrend = (current, previous) => {
-      if (previous === 0) return 0;
-      return Number(((current - previous) / previous * 100).toFixed(1));
-    };
+        return {
+          _id: m._id,
+          name: m.name,
+          email: m.email,
+          joinedAt: m.createdAt,
+          customerCount: customers.length,
+          atRiskCount: atRisk,
+          activeCount: active,
+          inactiveCount: inactive,
+          avgChurnScore: parseFloat(avgChurn),
+          customers,
+          recentInteractions,
+        };
+      })
+    );
 
-    res.json({
+    res.status(200).json({
       success: true,
       data: {
-        totalCustomers: calculateTrend(currentTotal, previousTotal),
-        atRiskCount: calculateTrend(currentAtRisk, previousAtRisk),
-        positiveSentiment: calculateTrend(currentPositive, previousPositive),
-        negativeSentiment: calculateTrend(currentNegative, previousNegative),
+        systemStats: { totalCustomers, totalManagers, atRiskTotal, activeTotal },
+        managerDetails,
       },
     });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 };
