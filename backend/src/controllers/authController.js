@@ -12,9 +12,7 @@ exports.register = async (req, res) => {
   try {
     const { name, email, password, role = 'sales_manager' } = req.body;
 
-    if (['admin', 'admin2'].includes(role) && process.env.ALLOW_ADMIN_REGISTRATION !== 'true') {
-      return res.status(403).json({ success: false, error: 'Admin registration is disabled' });
-    }
+    // Allow registration for any role (including admin).
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
