@@ -51,6 +51,13 @@ const sendReply = async ({ interactionId, customerId, userId, message, subject }
     churnScore: customer.churnScore || 0,
   });
 
+  if (original?._id && original.emailDirection !== 'outbound') {
+    await Interaction.updateOne(
+      { _id: original._id },
+      { emailResponded: true, emailRead: true }
+    );
+  }
+
   const outbound = await Interaction.create({
     customerId: customer._id,
     userId,
@@ -68,7 +75,9 @@ const sendReply = async ({ interactionId, customerId, userId, message, subject }
     sentimentLabel: analysis?.sentiment ?? null,
     priority: analysis?.priority ?? 'low',
     priorityScore: analysis?.priorityScore ?? 30,
-    emailInsight: 'Outbound reply sent from SynapseCRM.',
+    emailInsight: 'Sent via SynapseCRM — delivery OK.',
+    emailRead: true,
+    emailResponded: false,
   });
 
   await Customer.findByIdAndUpdate(customer._id, { lastContactDate: new Date() });

@@ -85,6 +85,14 @@ const interactionSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    emailRead: {
+      type: Boolean,
+      default: false,
+    },
+    emailResponded: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

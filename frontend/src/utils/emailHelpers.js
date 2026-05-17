@@ -135,3 +135,23 @@ export function getSenderLabel(interaction) {
   }
   return c?.name || interaction?.emailFrom || 'Unknown sender'
 }
+
+/** Mailbox folder: unread (needs reply), sent (outbound), responded (replied inbound). */
+export function getMailboxFolder(interaction) {
+  if (interaction?.emailDirection === 'outbound') return 'sent'
+  if (interaction?.emailResponded) return 'responded'
+  return 'unread'
+}
+
+export function isUnreadInboxItem(interaction) {
+  return getMailboxFolder(interaction) === 'unread'
+}
+
+export function mailboxFolderCounts(emails = []) {
+  const counts = { all: emails.length, unread: 0, sent: 0, responded: 0 }
+  for (const e of emails) {
+    const f = getMailboxFolder(e)
+    if (f in counts) counts[f] += 1
+  }
+  return counts
+}

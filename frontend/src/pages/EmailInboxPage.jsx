@@ -14,12 +14,20 @@ import SentimentBadge from '../components/SentimentBadge'
 import PriorityBadge from '../components/PriorityBadge'
 import {
   getEmailBody, getEmailSubject, getPreviewLine, getSenderLabel,
+  getMailboxFolder, isUnreadInboxItem, mailboxFolderCounts,
 } from '../utils/emailHelpers'
 import { formatDate, timeAgo } from '../utils/formatters'
 import { getSyncErrorMessage } from '../utils/syncErrorMessage'
 
 const MAILBOX_LIMIT = 150
 const AUTO_SYNC_MS = 15 * 1000
+
+const MAILBOX_TABS = [
+  { id: 'unread', label: 'Unread' },
+  { id: 'sent', label: 'Sent' },
+  { id: 'responded', label: 'Responded' },
+  { id: 'all', label: 'All' },
+]
 
 export default function EmailInboxPage() {
   const [searchParams] = useSearchParams()
@@ -37,6 +45,7 @@ export default function EmailInboxPage() {
   const [search, setSearch] = useState('')
   const [syncError, setSyncError] = useState(null)
   const [lastSyncOk, setLastSyncOk] = useState(null)
+  const [mailboxTab, setMailboxTab] = useState('unread')
 
   const loadMailbox = useCallback(async () => {
     try {
@@ -65,7 +74,11 @@ export default function EmailInboxPage() {
     try {
       const res = await emailApi.getEmail(item._id)
       if (res.data.success) {
-        setSelected(res.data.data)
+        const detail = res.data.data
+        setSelected(detail)
+        setEmails((prev) =>
+          prev.map((e) => (e._id === detail._id ? { ...e, emailRead: detail.emailRead, emailResponded: detail.emailResponded } : e))
+        )
       }
     } catch {
       setSelected(item)
@@ -122,6 +135,11 @@ export default function EmailInboxPage() {
   const handleSelect = (item) => {
     setSelected(item)
     setReplyText('')
+    if (isUnreadInboxItem(item)) {
+      setEmails((prev) =>
+        prev.map((e) => (e._id === item._id ? { ...e, emailRead: true } : e))
+      )
+    }
     loadEmailDetail(item)
   }
 
@@ -176,8 +194,9 @@ export default function EmailInboxPage() {
         subject: replySubject,
       })
       if (res.data.success) {
-        toast.success(res.data.data.message)
+        toast.success(res.data.data.message || 'Message sent')
         setReplyText('')
+        setMailboxTab('sent')
         await loadMailbox()
         if (res.data.data.interaction) {
           setSelected(res.data.data.interaction)
@@ -190,7 +209,10 @@ export default function EmailInboxPage() {
     }
   }
 
+  const folderCounts = mailboxFolderCounts(emails)
+
   const filtered = emails.filter((item) => {
+    if (mailboxTab !== 'all' && getMailboxFolder(item) !== mailboxTab) return false
     if (!search.trim()) return true
     const q = search.toLowerCase()
     const body = getEmailBody(item).toLowerCase()
@@ -250,10 +272,38 @@ export default function EmailInboxPage() {
         {/* —— Left: list —— */}
         <aside className="flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80">
           <div className="shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-                Latest {filtered.length} of {MAILBOX_LIMIT}
-              </span>
+            <div className="flex flex-wrap gap-1.5 mb-3" role="tablist" aria-label="Mailbox folders">
+              {MAILBOX_TABS.map((tab) => {
+                const count = folderCounts[tab.id] ?? 0
+                const active = mailboxTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setMailboxTab(tab.id)}
+                    className={clsx(
+                      'px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors inline-flex items-center gap-1',
+                      active
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                    )}
+                  >
+                    {tab.label}
+                    {count > 0 && (
+                      <span
+                        className={clsx(
+                          'min-w-[1.1rem] px-1 rounded-full text-[10px] font-bold text-center',
+                          active ? 'bg-white/25 text-white' : 'bg-slate-200 dark:bg-slate-700'
+                        )}
+                      >
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -274,14 +324,20 @@ export default function EmailInboxPage() {
           ) : filtered.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
               <Mail className="w-14 h-14 text-slate-300 dark:text-slate-600 mb-3" />
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No emails found</p>
-              <p className="text-xs text-slate-400 mt-1">Sync from Gmail to import messages</p>
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">
+                {mailboxTab === 'unread' ? 'No unread messages' : mailboxTab === 'sent' ? 'Nothing sent yet' : mailboxTab === 'responded' ? 'No replied threads' : 'No emails found'}
+              </p>
+              <p className="text-xs text-slate-400 mt-1">
+                {mailboxTab === 'unread' ? 'Incoming mail you have not replied to appears here' : 'Sync from Gmail to import messages'}
+              </p>
             </div>
           ) : (
             <ul className="flex-1 overflow-y-auto overscroll-contain">
               {filtered.map((item) => {
                 const isActive = selected?._id === item._id
                 const inbound = item.emailDirection !== 'outbound'
+                const folder = getMailboxFolder(item)
+                const needsAttention = folder === 'unread' && !item.emailRead
                 return (
                   <li key={item._id}>
                     <button
@@ -291,10 +347,15 @@ export default function EmailInboxPage() {
                         'w-full text-left px-4 py-3.5 border-b border-slate-100 dark:border-slate-800 transition-all',
                         isActive
                           ? 'bg-indigo-50 dark:bg-indigo-950/40 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800'
-                          : 'hover:bg-white dark:hover:bg-slate-800/60'
+                          : needsAttention
+                            ? 'bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/80'
+                            : 'hover:bg-white dark:hover:bg-slate-800/60'
                       )}
                     >
                       <div className="flex gap-2">
+                        {needsAttention && (
+                          <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-indigo-500" aria-hidden />
+                        )}
                         <div
                           className={clsx(
                             'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
@@ -305,7 +366,12 @@ export default function EmailInboxPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline justify-between gap-2">
-                            <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                            <span
+                              className={clsx(
+                                'text-sm truncate',
+                                needsAttention ? 'font-bold text-slate-900 dark:text-white' : 'font-semibold text-slate-900 dark:text-white'
+                              )}
+                            >
                               {getSenderLabel(item)}
                             </span>
                             <span className="text-[10px] text-slate-400 shrink-0">{timeAgo(item.date)}</span>
@@ -319,6 +385,16 @@ export default function EmailInboxPage() {
                           <div className="flex flex-wrap gap-1 mt-2">
                             <SentimentBadge label={item.sentimentLabel} size="xs" />
                             <PriorityBadge priority={item.priority} size="xs" />
+                            {folder === 'sent' && (
+                              <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                                Sent OK
+                              </span>
+                            )}
+                            {folder === 'responded' && (
+                              <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                                Replied
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -422,7 +498,13 @@ export default function EmailInboxPage() {
                       ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30'
                       : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30'
                   )}>
-                    {selected.emailDirection === 'outbound' ? 'Sent by you' : 'Received'}
+                    {selected.emailDirection === 'outbound'
+                      ? 'Sent · OK'
+                      : selected.emailResponded
+                        ? 'Responded'
+                        : selected.emailRead
+                          ? 'Read'
+                          : 'Unread'}
                   </span>
                 </div>
                 {selected.emailInsight && (

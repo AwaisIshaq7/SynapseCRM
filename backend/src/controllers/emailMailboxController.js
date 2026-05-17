@@ -19,13 +19,37 @@ const scopeFilter = async (user, customerId) => {
   return { filter };
 };
 
-// GET /api/emails/mailbox
+const applyMailboxFolder = (filter, folder) => {
+  if (!folder || folder === 'all') return filter;
+  if (folder === 'sent') {
+    return { ...filter, emailDirection: 'outbound' };
+  }
+  if (folder === 'unread') {
+    return {
+      ...filter,
+      emailDirection: { $ne: 'outbound' },
+      emailResponded: { $ne: true },
+    };
+  }
+  if (folder === 'responded') {
+    return {
+      ...filter,
+      emailDirection: { $ne: 'outbound' },
+      emailResponded: true,
+    };
+  }
+  return filter;
+};
+
+// GET /api/emails/mailbox?folder=all|unread|sent|responded
 exports.listMailbox = async (req, res) => {
   try {
     const scoped = await scopeFilter(req.user, req.query.customerId);
     if (scoped.error) return res.status(scoped.status).json({ success: false, error: scoped.error });
 
-    const emails = await Interaction.find(scoped.filter)
+    const query = applyMailboxFolder(scoped.filter, req.query.folder);
+
+    const emails = await Interaction.find(query)
       .populate('customerId', 'name email company priority overallSentiment')
       .populate('userId', 'name')
       .sort({ date: -1 })
@@ -62,6 +86,11 @@ exports.getEmail = async (req, res) => {
     if (data.content) {
       const match = data.content.match(/^(Subject:\s*.+?\n\n)([\s\S]*)$/i)
       if (match) data.content = match[1] + cleanEmailBody(match[2])
+    }
+
+    if (email.emailDirection !== 'outbound' && !email.emailRead) {
+      await Interaction.updateOne({ _id: email._id }, { emailRead: true });
+      data.emailRead = true;
     }
 
     res.status(200).json({ success: true, data });
