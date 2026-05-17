@@ -110,7 +110,10 @@ exports.forgotPassword = async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
     const resetLink = `${frontendUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
-    await sendPasswordResetEmail(user.email, user.name, resetLink);
+    // Send asynchronously so the frontend doesn't timeout!
+    sendPasswordResetEmail(user.email, user.name, resetLink)
+      .then(() => console.log('✅ Password reset email sent securely.'))
+      .catch((err) => console.error('❌ Failed to send password reset email:', err.message));
 
     const data = process.env.NODE_ENV === 'test'
       ? { resetToken, resetLink, mailMode: 'smtp_or_skipped' }

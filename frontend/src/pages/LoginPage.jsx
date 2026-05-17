@@ -4,9 +4,9 @@ import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import MyCRMLogo from '../assets/MyCRMLOGO.svg'
-import { 
-  Brain, Mail, Lock, Eye, EyeOff, Users, Zap, Shield, 
-  BarChart3, ArrowRight, CheckCircle, PlayCircle 
+import {
+  Brain, Mail, Lock, Eye, EyeOff, Users, Zap, Shield,
+  BarChart3, ArrowRight, CheckCircle, PlayCircle
 } from 'lucide-react'
 
 export default function LoginPage() {
@@ -99,11 +99,11 @@ export default function LoginPage() {
   const handleDemoLogin = async () => {
     if (loading || demoLoading) return
     setDemoLoading(true)
-    setFormData({ email: 'demo@synapsecrm.com', password: 'demo1234' })
+    setFormData({ email: 'demo@synapsecrm.com', password: 'Demo1234!' })
     const toastId = toast.loading('Connecting to Demo Workspace... 🚀')
-    
+
     try {
-      const result = await login({ email: 'demo@synapsecrm.com', password: 'demo1234', rememberMe: false })
+      const result = await login({ email: 'demo@synapsecrm.com', password: 'Demo1234!', rememberMe: false })
       if (result.success) {
         toast.success('Welcome to SynapseCRM Demo! 🎉', { id: toastId })
         navigate('/dashboard', { replace: true })
@@ -124,7 +124,7 @@ export default function LoginPage() {
         {/* LEFT COLUMN */}
         <div className="hidden lg:flex lg:w-5/12 items-center justify-center p-8 lg:p-12 relative bg-linear-to-br from-zinc-900 via-indigo-950 to-purple-950">
           <div className="absolute inset-0 bg-[radial-gradient(#4f46e520_0.8px,transparent_1px)] bg-size-[20px_20px] opacity-40"></div>
-          
+
           <div className="w-full max-w-lg relative z-10">
             {/* Logo */}
             <div className="mb-4 flex justify-center">
@@ -193,9 +193,9 @@ export default function LoginPage() {
           <div className="w-full max-w-md">
             {/* Mobile Logo */}
             <div className="flex justify-center mb-8 lg:hidden">
-              <img 
-                src={MyCRMLogo} 
-                alt="SynapseCRM Logo" 
+              <img
+                src={MyCRMLogo}
+                alt="SynapseCRM Logo"
                 className="h-10 w-auto"
                 style={{ filter: logoFilter }}
               />
@@ -229,9 +229,8 @@ export default function LoginPage() {
                     onChange={handleChange}
                     placeholder="you@company.com"
                     disabled={loading}
-                    className={`w-full pl-11 pr-4 py-3.5 bg-zinc-50 border rounded-2xl text-sm focus:outline-none focus:ring-2 transition-all ${
-                      errors.email ? 'border-red-300 bg-red-50 focus:border-red-500' : 'border-zinc-200 focus:border-indigo-500 focus:ring-indigo-200'
-                    }`}
+                    className={`w-full pl-11 pr-4 py-3.5 bg-zinc-50 border rounded-2xl text-sm focus:outline-none focus:ring-2 transition-all ${errors.email ? 'border-red-300 bg-red-50 focus:border-red-500' : 'border-zinc-200 focus:border-indigo-500 focus:ring-indigo-200'
+                      }`}
                   />
                 </div>
                 {errors.email && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.email}</p>}
@@ -255,9 +254,8 @@ export default function LoginPage() {
                     onChange={handleChange}
                     placeholder="••••••••"
                     disabled={loading}
-                    className={`w-full pl-11 pr-11 py-3.5 bg-zinc-50 border rounded-2xl text-sm focus:outline-none focus:ring-2 transition-all ${
-                      errors.password ? 'border-red-300 bg-red-50 focus:border-red-500' : 'border-zinc-200 focus:border-indigo-500 focus:ring-indigo-200'
-                    }`}
+                    className={`w-full pl-11 pr-11 py-3.5 bg-zinc-50 border rounded-2xl text-sm focus:outline-none focus:ring-2 transition-all ${errors.password ? 'border-red-300 bg-red-50 focus:border-red-500' : 'border-zinc-200 focus:border-indigo-500 focus:ring-indigo-200'
+                      }`}
                   />
                   <button
                     type="button"
@@ -291,11 +289,11 @@ export default function LoginPage() {
                   <>
                     <LoadingSpinner size="sm" />
                     Signing you in...
-                  </> 
+                  </>
                 ) : (
                   <>
                     <p style={{ color: 'white' }}>Sign in</p>
-                   <p style={{ color: 'white' }}> <ArrowRight className="w-4 h-4" /></p>
+                    <p style={{ color: 'white' }}> <ArrowRight className="w-4 h-4" /></p>
                   </>
                 )}
               </button>
