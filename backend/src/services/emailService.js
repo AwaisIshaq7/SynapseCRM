@@ -2,7 +2,6 @@ const nodemailer = require('nodemailer');
 
 const isMailConfigured = () => Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 
-/** Gmail app passwords must be 16 characters with no spaces. */
 const getSmtpPass = () => (process.env.SMTP_PASS || '').replace(/\s+/g, '');
 
 const createTransport = () => {
@@ -12,13 +11,7 @@ const createTransport = () => {
   if (process.env.SMTP_HOST) {
     const port = Number(process.env.SMTP_PORT) || 587;
     const secure = process.env.SMTP_SECURE === 'true' || port === 465;
-
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port,
-      secure,
-      auth: { user, pass },
-    });
+    return nodemailer.createTransport({ host: process.env.SMTP_HOST, port, secure, auth: { user, pass } });
   }
 
   return nodemailer.createTransport({
@@ -27,7 +20,7 @@ const createTransport = () => {
   });
 };
 
-const sendMail = async ({ to, subject, html, text }) => {
+const sendMail = async ({ to, subject, html, text, headers }) => {
   if (!isMailConfigured()) {
     console.warn('Email skipped: SMTP_USER and SMTP_PASS are not configured');
     return { skipped: true };
@@ -40,49 +33,45 @@ const sendMail = async ({ to, subject, html, text }) => {
     subject,
     html,
     text,
+    headers,
   });
 };
 
-/**
- * Sends reset link to `to` (any provider). Mail is sent FROM SMTP_USER in .env
- * (one Gmail app account for the whole app — not per-user Gmail).
- */
 const sendVerificationEmail = async (to, name, verifyLink) => sendMail({
   to,
   subject: 'Verify your SynapseCRM email',
-  text: `Hi ${name || 'there'},\n\nConfirm your email to activate your account:\n${verifyLink}\n\nLink expires in 24 hours.`,
-  html: `<div style="font-family:sans-serif;max-width:520px"><h2 style="color:#2563eb">SynapseCRM</h2><p>Hi ${name || 'there'},</p><p>Verify your email to activate your account:</p><p><a href="${verifyLink}">Verify email</a></p><p style="font-size:12px;color:#64748b">${verifyLink}</p></div>`,
+  text: `Hi ${name || 'there'},\n\nConfirm your email:\n${verifyLink}`,
+  html: `<div style="font-family:sans-serif"><h2>SynapseCRM</h2><p>Hi ${name || 'there'},</p><p><a href="${verifyLink}">Verify email</a></p></div>`,
 });
 
 const sendPasswordResetEmail = async (to, name, resetLink) => sendMail({
   to,
   subject: 'Reset your SynapseCRM password',
-  text: `Hi ${name || 'there'},\n\nReset your password using this link (expires in 1 hour):\n${resetLink}\n\nIf you did not request this, ignore this email.`,
-  html: `
-    <div style="font-family:sans-serif;max-width:520px;margin:0 auto">
-      <h2 style="color:#2563eb">SynapseCRM</h2>
-      <p>Hi ${name || 'there'},</p>
-      <p>We received a request to reset your password.</p>
-      <p><a href="${resetLink}" style="display:inline-block;padding:12px 20px;background:#2563eb;color:#fff;text-decoration:none;border-radius:8px">Reset password</a></p>
-      <p style="font-size:12px;color:#64748b">Or copy this link: ${resetLink}</p>
-      <p style="font-size:12px;color:#64748b">This link expires in 1 hour. If you did not request a reset, you can ignore this email.</p>
-    </div>
-  `,
+  text: `Reset your password:\n${resetLink}`,
+  html: `<div style="font-family:sans-serif"><p><a href="${resetLink}">Reset password</a></p></div>`,
 });
 
 const sendChurnAlert = async (to, managerName, customerName, churnScore) => sendMail({
   to,
   subject: 'High churn risk alert',
   text: `${customerName} has high churn risk (${Math.round(churnScore * 100)}%).`,
-  html: `<p>Hi ${managerName || 'there'},</p><p><strong>${customerName}</strong> has high churn risk (${Math.round(churnScore * 100)}%).</p>`,
+  html: `<p><strong>${customerName}</strong> has high churn risk.</p>`,
 });
 
 const sendSentimentAlert = async (to, managerName, customerName) => sendMail({
   to,
   subject: 'Negative sentiment alert',
   text: `${customerName} has three recent negative interactions.`,
-  html: `<p>Hi ${managerName || 'there'},</p><p><strong>${customerName}</strong> has three recent negative interactions.</p>`,
+  html: `<p><strong>${customerName}</strong> has three recent negative interactions.</p>`,
 });
+
+const sendCustomerReplyEmail = async ({ to, subject, body, inReplyTo }) => {
+  const safeSubject = subject?.startsWith('Re:') ? subject : `Re: ${subject || 'Your message'}`;
+  const html = `<div style="font-family:sans-serif;max-width:640px;line-height:1.6"><p>${body.replace(/\n/g, '<br>')}</p><p style="font-size:12px;color:#64748b">— Sent via SynapseCRM</p></div>`;
+  const headers = {};
+  if (inReplyTo) headers['In-Reply-To'] = inReplyTo;
+  return sendMail({ to, subject: safeSubject, text: body, html, headers });
+};
 
 module.exports = {
   isMailConfigured,
@@ -92,5 +81,5 @@ module.exports = {
   sendPasswordResetEmail,
   sendChurnAlert,
   sendSentimentAlert,
+  sendCustomerReplyEmail,
 };
-

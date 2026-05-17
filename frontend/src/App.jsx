@@ -19,6 +19,7 @@ const CustomerFormPage = lazy(() => import('./pages/CustomerFormPage'))
 const ReportsPage = lazy(() => import('./pages/ReportsPage'))
 const UserManagementPage = lazy(() => import('./pages/UserManagementPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
+const EmailInboxPage = lazy(() => import('./pages/EmailInboxPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 
 export default function App() {
@@ -75,6 +76,7 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/emails" element={<EmailInboxPage />} />
           <Route path="/customers" element={<CustomerListPage />} />
           <Route path="/customers/new" element={<CustomerFormPage />} />
           <Route path="/customers/:id" element={<CustomerDetailPage />} />

@@ -40,14 +40,27 @@ mongoose.connect(process.env.MONGO_URI, connectionOptions)
     await seedDemoUser();
     startChurnRefresh();
 
-    if (process.env.SYNC_EMAILS_ON_START === 'true' && isImapConfigured()) {
-      syncInboxToDatabase()
+    const runEmailSync = () => {
+      if (!isImapConfigured()) return;
+      syncInboxToDatabase({
+        limit: Number(process.env.EMAIL_SYNC_LIMIT) || 200,
+        sinceDays: Number(process.env.EMAIL_SYNC_SINCE_DAYS) || 180,
+      })
         .then((stats) => {
-          console.log(
-            `📬 Email sync on startup: ${stats.interactionsCreated} interaction(s), ${stats.customersCreated} new customer(s)`
-          );
+          if (stats.interactionsCreated > 0) {
+            console.log(`📬 Email sync: +${stats.interactionsCreated} new, ${stats.customersCreated} customer(s)`);
+          }
         })
-        .catch((err) => console.warn('⚠️ Email sync on startup skipped:', err.message));
+        .catch((err) => console.warn('⚠️ Email sync:', err.message));
+    };
+
+    if (process.env.SYNC_EMAILS_ON_START === 'true') runEmailSync();
+
+    const autoMins = Number(process.env.EMAIL_AUTO_SYNC_MINUTES) || 0;
+    if (autoMins > 0) {
+      runEmailSync();
+      setInterval(runEmailSync, autoMins * 60 * 1000);
+      console.log(`📬 Auto email sync every ${autoMins} minute(s)`);
     }
 
     if (process.env.NODE_ENV === 'production' && !isMailConfigured()) {

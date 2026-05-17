@@ -13,7 +13,7 @@ import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { getStatusClasses, getChurnRiskClasses } from '../utils/sentimentUtils'
 import { capitalize, formatDate, timeAgo, getInteractionIcon } from '../utils/formatters'
-import { Bot } from 'lucide-react'
+import { Bot, Mail } from 'lucide-react'
 import Breadcrumbs from '../components/hci/Breadcrumbs'
 import ConfirmModal from '../components/hci/ConfirmModal'
 import { storage } from '../utils/storage'
@@ -168,6 +168,13 @@ export default function CustomerDetailPage() {
 
           {/* Actions */}
           <div className="flex gap-2 shrink-0">
+            <Link
+              to={`/emails?customer=${id}`}
+              className="btn-secondary text-sm inline-flex items-center gap-2"
+            >
+              <Mail size={16} />
+              Email inbox
+            </Link>
             <button
               onClick={() => setShowRAG(true)}
               className="btn-secondary text-sm inline-flex items-center gap-2"

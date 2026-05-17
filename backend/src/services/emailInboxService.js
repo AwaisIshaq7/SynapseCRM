@@ -92,7 +92,8 @@ const fetchInboxEmails = async ({ limit = 50, sinceDays = 30, mailbox = 'INBOX' 
             fromName: from.name || fromEmail.split('@')[0],
             fromEmail,
             subject,
-            text: text.slice(0, 4000),
+            text: text.slice(0, 50000),
+            html: (parsed.html || '').slice(0, 100000),
             date: parsed.date || msg.envelope?.date || new Date(),
           });
         } catch (parseErr) {

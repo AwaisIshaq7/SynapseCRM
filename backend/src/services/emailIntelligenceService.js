@@ -119,11 +119,17 @@ const reanalyzeCustomerEmails = async (customerId) => {
 
     if (!analysis) continue;
 
+    if (!interaction.emailBody?.trim()) {
+      const { extractParts } = require('../utils/emailAnalysisFallback');
+      const parts = extractParts(interaction.content, interaction.emailSubject);
+      interaction.emailBody = parts.body || interaction.content;
+    }
     interaction.sentimentScore = analysis.score;
     interaction.sentimentLabel = analysis.sentiment;
     interaction.priority = analysis.priority;
     interaction.priorityScore = analysis.priorityScore;
     interaction.emailInsight = analysis.insight;
+    if (!interaction.emailDirection) interaction.emailDirection = 'inbound';
     await interaction.save();
 
     await SentimentLog.findOneAndUpdate(

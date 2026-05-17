@@ -67,6 +67,24 @@ const interactionSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    emailBody: {
+      type: String,
+      default: '',
+    },
+    emailTo: {
+      type: String,
+      lowercase: true,
+      trim: true,
+    },
+    emailDirection: {
+      type: String,
+      enum: ['inbound', 'outbound'],
+      default: 'inbound',
+    },
+    inReplyTo: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 );
