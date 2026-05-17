@@ -49,4 +49,7 @@ const customerSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// High-speed compound index for role-filtered and status-filtered listings
+customerSchema.index({ assignedTo: 1, status: 1 });
+
 module.exports = mongoose.model('Customer', customerSchema);

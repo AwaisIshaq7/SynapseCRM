@@ -3,6 +3,7 @@ const dotenv = require('dotenv');
 const cron = require('node-cron');
 const app = require('./app');
 const { startChurnRefresh } = require('./utils/churnRefresh');
+const { startRetrainScheduler } = require('./services/churnRetrainService');
 const { generateDailyRiskReport } = require('./services/ragBatchService');
 const { isMailConfigured } = require('./services/emailService');
 
@@ -29,6 +30,7 @@ mongoose.connect(process.env.MONGO_URI, connectionOptions)
   .then(() => {
     console.log('✅ MongoDB connected');
     startChurnRefresh();
+    startRetrainScheduler();
 
     if (process.env.NODE_ENV === 'production' && !isMailConfigured()) {
       console.warn('⚠️ Password reset and alert email delivery is not configured. Set SMTP_USER and SMTP_PASS for Gmail SMTP in production use.');

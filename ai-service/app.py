@@ -12,7 +12,7 @@ import logging
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from sentiment import analyze_sentiment
-from churn import calculate_churn_risk
+from churn import calculate_churn_risk, get_model_info, reload_model
 
 # Configure logging
 logging.basicConfig(
@@ -136,6 +136,17 @@ def churn_risk():
         return jsonify({"error": str(e)}), 500
 
 # ========================================
+# Model Information
+# ========================================
+@app.route('/model-info', methods=['GET'])
+def model_info():
+    try:
+        info = get_model_info()
+        return jsonify(info), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ========================================
 # Cache Statistics
 # ========================================
 @app.route('/cache-stats', methods=['GET'])
@@ -182,6 +193,113 @@ def stats():
             "expected_improvement_with_cache": "60-70% for repeated queries"
         }
     }), 200
+
+# ========================================
+# Live ML Classifier Retraining Pipeline
+# ========================================
+@app.route('/train', methods=['POST'])
+def train():
+    try:
+        data = request.get_json()
+        if not data or 'samples' not in data:
+            return jsonify({"error": "Missing 'samples' field in training payload"}), 400
+        
+        samples = data['samples']
+        if len(samples) < 5:
+            return jsonify({"error": "Insufficient training samples. Need at least 5 samples."}), 400
+            
+        import numpy as np
+        from sklearn.ensemble import RandomForestClassifier
+        
+        # 1. Compile X and y arrays
+        X = []
+        y = []
+        for s in samples:
+            X.append([
+                float(s.get('days_since_last_contact', 0)),
+                float(s.get('avg_sentiment_score', 0.0)),
+                float(s.get('interaction_count', 0)),
+                float(s.get('interaction_frequency', 0.0))
+            ])
+            y.append(int(s.get('churn', 0)))
+            
+        X = np.array(X)
+        y = np.array(y)
+        
+        # 2. Dynamic Augmentation for smaller tenant datasets to ensure model robustness!
+        if len(X) < 250:
+            logger.info(f"Augmenting training set from {len(X)} to 250 samples using perturbing interpolation...")
+            np.random.seed(42)
+            extra_needed = 250 - len(X)
+            X_aug = []
+            y_aug = []
+            for _ in range(extra_needed):
+                idx = np.random.choice(len(X))
+                base_x = X[idx]
+                base_y = y[idx]
+                
+                noise = np.array([
+                    np.random.uniform(-4, 4),
+                    np.random.uniform(-0.1, 0.1),
+                    np.random.randint(-2, 3),
+                    np.random.uniform(-0.05, 0.05)
+                ])
+                
+                perturbed_x = base_x + noise
+                perturbed_x[0] = max(0.0, min(120.0, perturbed_x[0]))
+                perturbed_x[1] = max(-1.0, min(1.0, perturbed_x[1]))
+                perturbed_x[2] = max(0.0, min(100.0, perturbed_x[2]))
+                perturbed_x[3] = max(0.0, min(5.0, perturbed_x[3]))
+                
+                X_aug.append(perturbed_x)
+                y_aug.append(base_y)
+                
+            X = np.vstack([X, np.array(X_aug)])
+            y = np.concatenate([y, np.array(y_aug)])
+            logger.info("Augmentation complete!")
+
+        # 3. Train RandomForest model
+        clf = RandomForestClassifier(
+            n_estimators=100,
+            max_depth=6,
+            min_samples_split=4,
+            random_state=42
+        )
+        clf.fit(X, y)
+        
+        # 4. Compute metrics
+        accuracy = float(clf.score(X, y))
+        importances = clf.feature_importances_
+        features = ["days_since_last_contact", "avg_sentiment_score", "interaction_count", "interaction_frequency"]
+        
+        # 5. Overwrite joblib model files on disk
+        model_dir = os.path.join(os.path.dirname(__file__), 'src', 'models')
+        if not os.path.exists(model_dir):
+            model_dir = os.path.join(os.path.dirname(__file__), 'models')
+        os.makedirs(model_dir, exist_ok=True)
+        
+        model_path = os.path.join(model_dir, 'churn_model.joblib')
+        joblib.dump(clf, model_path)
+        
+        metrics = {
+            "accuracy": accuracy,
+            "feature_importances": {f: float(imp) for f, imp in zip(features, importances)},
+            "samples_trained": len(X)
+        }
+        joblib.dump(metrics, os.path.join(model_dir, 'model_metrics.joblib'))
+        
+        # 6. Reload model in memory dynamically
+        reload_model()
+        
+        return jsonify({
+            "success": True,
+            "message": "Model trained and reloaded successfully!",
+            "metrics": metrics
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to retrain model: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8000))

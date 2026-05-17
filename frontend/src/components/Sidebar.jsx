@@ -82,53 +82,95 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="hidden w-80 shrink-0 flex-col border-r border-slate-200/70 bg-white/75 backdrop-blur-xl dark:border-slate-700/70 dark:bg-slate-900/65 md:flex"
+      className="hidden w-80 shrink-0 flex-col border-r border-white/10 bg-linear-to-b from-white/30 to-white/10 backdrop-blur-xl dark:border-slate-800/40 dark:from-slate-900/30 dark:to-slate-950/20 md:flex relative overflow-hidden"
       role="navigation"
       aria-label="Main navigation"
     >
+      {/* Premium Glassmorphic glowing orbs in the background */}
+      <div className="absolute -top-24 -left-24 w-48 h-48 rounded-full bg-brand-500/10 dark:bg-brand-500/5 blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-24 -right-24 w-48 h-48 rounded-full bg-emerald-500/10 dark:bg-emerald-500/5 blur-3xl pointer-events-none" />
+
       {/* Logo */}
-      <div className="flex h-28 items-center justify-center px-6">
+      <div className="flex h-28 items-center justify-center px-6 relative z-10">
         <Logo size={user?.role === 'admin' ? 'normal' : 'small'} className="w-auto h-auto" />
       </div>
+      
       {/* Navigation links */}
-      <nav className="flex-1 space-y-2 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-2.5 overflow-y-auto px-4 py-4 relative z-10">
         {visibleItems.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
               clsx(
-                'group flex items-center gap-3 rounded-2xl px-3.5 py-3 transition-all duration-200',
+                'group flex items-center gap-3 rounded-2xl px-3.5 py-3 transition-all duration-300 relative overflow-hidden border',
                 isActive
-                  ? 'border border-brand-200 bg-linear-to-r from-brand-50 to-brand-100/40 text-brand-700 shadow-[0_16px_30px_-24px_rgba(37,99,235,0.7)] dark:border-brand-900/40 dark:bg-linear-to-r dark:from-brand-900/30 dark:to-brand-900/15 dark:text-brand-300'
-                  : 'border border-transparent text-slate-600 hover:border-slate-200 hover:bg-slate-100/80 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-700 dark:hover:bg-slate-800/70 dark:hover:text-slate-100'
+                  ? 'border-brand-200/50 bg-linear-to-r from-brand-500/10 to-brand-500/5 text-brand-700 ring-2 ring-brand-500/20 shadow-[0_4px_20px_rgba(59,130,246,0.1)] dark:border-brand-500/30 dark:from-brand-500/25 dark:to-brand-500/5 dark:text-brand-300'
+                  : 'border-transparent text-slate-600 hover:border-slate-200/50 hover:bg-slate-100/50 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-800/40 dark:hover:bg-slate-800/40 dark:hover:text-slate-100'
               )
             }
           >
-            <div className="rounded-xl bg-white/70 p-2.5 shadow-sm dark:bg-slate-900/60">
-              {item.icon}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{item.label}</p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{item.subtitle}</p>
-            </div>
-            <span className="rounded-full border border-slate-200/80 bg-white/85 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300">
-              {item.badge}
-            </span>
+            {({ isActive }) => (
+              <>
+                {/* Glowing vertical left indicator */}
+                <div className={clsx(
+                  "absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-brand-500 dark:bg-brand-400 rounded-r-full transition-all duration-300 transform origin-left",
+                  isActive ? "scale-y-100 opacity-100 shadow-[0_0_10px_rgba(59,130,246,0.8)]" : "scale-y-0 opacity-0"
+                )} />
+
+                <div className={clsx(
+                  "rounded-xl p-2.5 shadow-xs transition-all duration-300",
+                  isActive
+                    ? "bg-brand-500 text-white shadow-md shadow-brand-500/20"
+                    : "bg-white/70 dark:bg-slate-900/60 text-slate-500 dark:text-slate-400 group-hover:scale-110 group-hover:text-brand-500"
+                )}>
+                  {item.icon}
+                </div>
+                
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold tracking-wide">{item.label}</p>
+                  <p className="truncate text-[10px] text-slate-400 dark:text-slate-500 group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors">
+                    {item.subtitle}
+                  </p>
+                </div>
+
+                <span className={clsx(
+                  "rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.14em] border transition-all duration-300",
+                  isActive
+                    ? "bg-brand-500/10 border-brand-500/20 text-brand-600 dark:text-brand-400"
+                    : "border-slate-200 bg-white/50 text-slate-400 dark:border-slate-800 dark:bg-slate-950/40 dark:text-slate-500 group-hover:border-brand-500/20 group-hover:text-brand-500"
+                )}>
+                  {item.badge}
+                </span>
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      <div className="mx-4 mb-3 rounded-2xl border border-slate-200/70 bg-linear-to-br from-white/90 to-slate-50/80 p-3 dark:border-slate-700/70 dark:from-slate-900/85 dark:to-slate-900/65">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Workspace status</p>
-        <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-          <span className="rounded-lg bg-emerald-50 px-2 py-1 font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">Realtime UI</span>
-          <span className="rounded-lg bg-blue-50 px-2 py-1 font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Adaptive</span>
+      {/* Workspace Indicator panel */}
+      <div className="mx-4 mb-4 rounded-2xl border border-white/10 bg-linear-to-br from-white/30 to-white/5 p-4 dark:border-slate-800/40 dark:from-slate-900/30 dark:to-slate-900/10 backdrop-blur-md relative z-10">
+        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-slate-400 dark:text-slate-500">Workspace status</p>
+        <div className="mt-2.5 grid grid-cols-2 gap-2 text-[10px]">
+          <div className="flex items-center gap-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/15 px-2.5 py-1 font-semibold text-emerald-600 dark:text-emerald-400">
+            <span className="relative flex h-1.5 w-1.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+            </span>
+            <span>Realtime UI</span>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-lg bg-brand-500/5 border border-brand-500/15 px-2.5 py-1 font-semibold text-brand-600 dark:text-brand-400">
+            <span className="relative flex h-1.5 w-1.5 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-brand-500"></span>
+            </span>
+            <span>Adaptive</span>
+          </div>
         </div>
       </div>
 
       {/* Role indicator at bottom */}
-      <div className="border-t border-slate-200/70 px-4 py-4 dark:border-slate-700/70">
+      <div className="border-t border-white/10 px-4 py-4 dark:border-slate-800/40 relative z-10 bg-white/10 dark:bg-slate-950/10">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-100 dark:bg-brand-900/40">
             <span className="text-xs font-semibold text-brand-700 dark:text-brand-300">

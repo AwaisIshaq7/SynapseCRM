@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { storage } from '../utils/storage'
 import toast from 'react-hot-toast'
+import axiosInstance from '../api/axiosInstance'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, ArcElement, Title, Tooltip, Legend, Filler)
 
@@ -145,19 +146,12 @@ export default function ReportsPage() {
   const exportCustomersReport = async () => {
     setExporting(true)
     try {
-      const response = await fetch('/api/reports/customers/report', {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${storage.getToken()}`,
-        },
+      const response = await axiosInstance.get('/reports/customers/report', {
+        responseType: 'blob',
       })
 
-      if (!response.ok) {
-        throw new Error(`Export failed with status ${response.status}`)
-      }
-
-      const blob = await response.blob()
-      if (!blob.size) {
+      const blob = response.data
+      if (!blob || !blob.size) {
         throw new Error('Report blob is empty')
       }
 

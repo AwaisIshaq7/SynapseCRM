@@ -5,11 +5,12 @@ import toast from 'react-hot-toast'
 /**
  * Hook for fetching + managing customers list with search + filter
  */
-export function useCustomers(initialParams = {}) {
+export function useCustomers(initialParams = { page: 1, limit: 12 }) {
   const [customers, setCustomers] = useState([])
   const [loading,   setLoading]   = useState(true)
   const [error,     setError]     = useState(null)
   const [params,    setParams]    = useState(initialParams)
+  const [pagination, setPagination] = useState({ page: 1, limit: 12, total: 0, totalPages: 1 })
 
   const fetchCustomers = useCallback(async (fetchParams = params) => {
     setLoading(true)
@@ -18,6 +19,9 @@ export function useCustomers(initialParams = {}) {
       const res = await customersApi.getAll(fetchParams)
       if (res.data.success) {
         setCustomers(res.data.data)
+        if (res.data.pagination) {
+          setPagination(res.data.pagination)
+        }
       }
     } catch (err) {
       const msg = err.response?.data?.error || 'Failed to load customers'
@@ -28,12 +32,15 @@ export function useCustomers(initialParams = {}) {
   }, [params])
 
   useEffect(() => {
-    const t = setTimeout(() => { fetchCustomers() }, 0)
-    return () => clearTimeout(t)
+    fetchCustomers()
   }, [fetchCustomers])
 
   const updateParams = useCallback((newParams) => {
-    setParams(prev => ({ ...prev, ...newParams }))
+    setParams(prev => {
+      // If updating status or search, reset page to 1
+      const page = ('status' in newParams || 'search' in newParams) ? 1 : (newParams.page || prev.page || 1);
+      return { ...prev, ...newParams, page };
+    })
   }, [])
 
   const deleteCustomer = useCallback(async (id) => {
@@ -48,7 +55,7 @@ export function useCustomers(initialParams = {}) {
     }
   }, [])
 
-  return { customers, loading, error, updateParams, deleteCustomer, refetch: fetchCustomers }
+  return { customers, loading, error, updateParams, deleteCustomer, refetch: fetchCustomers, pagination }
 }
 
 /**
@@ -73,8 +80,7 @@ export function useCustomer(id) {
   }, [id])
 
   useEffect(() => {
-    const t = setTimeout(() => { fetchCustomer() }, 0)
-    return () => clearTimeout(t)
+    fetchCustomer()
   }, [fetchCustomer])
 
   return { customer, loading, error, refetch: fetchCustomer, setCustomer }

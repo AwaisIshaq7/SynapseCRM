@@ -19,6 +19,9 @@ export const authApi = {
   resetPassword: (token, password, confirmPassword) =>
     axiosInstance.post(`/auth/reset-password/${token}`, { password, confirmPassword }),
 
+  validateResetToken: (token) =>
+    axiosInstance.get(`/auth/validate-reset/${token}`),
+
   changePassword: (currentPassword, newPassword, confirmPassword) =>
     axiosInstance.put('/auth/change-password', { currentPassword, newPassword, confirmPassword }),
 }

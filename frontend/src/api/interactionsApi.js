@@ -1,8 +1,8 @@
 import axiosInstance from './axiosInstance'
 
 export const interactionsApi = {
-  getByCustomer: (customerId) =>
-    axiosInstance.get(`/customers/${customerId}/interactions`),
+  getByCustomer: (customerId, params = {}) =>
+    axiosInstance.get(`/customers/${customerId}/interactions`, { params }),
 
   create: (customerId, data) =>
     axiosInstance.post(`/customers/${customerId}/interactions`, data),

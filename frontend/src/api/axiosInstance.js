@@ -2,7 +2,14 @@ import axios from 'axios'
 import { storage } from '../utils/storage'
 
 // Use env variable — falls back to the Vite proxy path for local dev
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+let BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+
+// Bulletproof fallback: If running live on Vercel and BASE_URL is still relative, auto-route to Render backend
+if (typeof window !== 'undefined' && 
+    (window.location.hostname.includes('vercel.app') || window.location.hostname.includes('synapsecrm-zeta')) &&
+    BASE_URL === '/api') {
+  BASE_URL = 'https://synapsecrm-backend.onrender.com/api'
+}
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,

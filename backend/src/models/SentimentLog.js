@@ -28,4 +28,8 @@ const sentimentLogSchema = new mongoose.Schema(
   }
 );
 
+// High-speed compound indexes for sentiment history trends and manager filtering
+sentimentLogSchema.index({ customerId: 1, analyzedAt: -1 });
+sentimentLogSchema.index({ analyzedAt: -1 });
+
 module.exports = mongoose.model('SentimentLog', sentimentLogSchema);

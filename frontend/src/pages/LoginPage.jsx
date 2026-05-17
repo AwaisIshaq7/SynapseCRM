@@ -15,6 +15,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
+  const [demoLoading, setDemoLoading] = useState(false)
 
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -95,9 +96,25 @@ export default function LoginPage() {
   const logoFilter = 'brightness(0) saturate(100%) invert(68%) sepia(96%) saturate(748%) hue-rotate(248deg) brightness(92%) contrast(96%)'
 
   // Demo Login Handler
-  const handleDemoLogin = () => {
+  const handleDemoLogin = async () => {
+    if (loading || demoLoading) return
+    setDemoLoading(true)
     setFormData({ email: 'demo@synapsecrm.com', password: 'demo1234' })
-    toast.success('Demo credentials filled!', { icon: '🚀' })
+    const toastId = toast.loading('Connecting to Demo Workspace... 🚀')
+    
+    try {
+      const result = await login({ email: 'demo@synapsecrm.com', password: 'demo1234', rememberMe: false })
+      if (result.success) {
+        toast.success('Welcome to SynapseCRM Demo! 🎉', { id: toastId })
+        navigate('/dashboard', { replace: true })
+      } else {
+        toast.error(result.error || 'Demo login failed.', { id: toastId })
+      }
+    } catch (err) {
+      toast.error('Connection failed. Please try again.', { id: toastId })
+    } finally {
+      setDemoLoading(false)
+    }
   }
 
   return (
@@ -287,14 +304,24 @@ export default function LoginPage() {
             {/* Demo Widget */}
             <div className="mt-6">
               <button
+                type="button"
                 onClick={handleDemoLogin}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-zinc-300 hover:border-indigo-300 hover:bg-indigo-50 text-zinc-700 font-medium transition-all"
+                disabled={loading || demoLoading}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border border-dashed border-zinc-300 hover:border-indigo-300 hover:bg-indigo-50 text-zinc-700 font-semibold transition-all cursor-pointer disabled:opacity-55"
               >
-                <PlayCircle className="w-5 h-5" />
-                Try Demo Account
+                {demoLoading ? (
+                  <>
+                    <LoadingSpinner size="sm" />
+                    Connecting Demo Workspace...
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="w-5 h-5 text-indigo-500 animate-pulse" />
+                    Try Demo Account
+                  </>
+                )}
               </button>
-              <p className="text-center text-[13px] text-zinc-500 mt-1.5">
+              <p className="text-center text-[13px] text-zinc-500 mt-1.5 font-medium">
                 Want to explore? Use demo credentials
               </p>
             </div>

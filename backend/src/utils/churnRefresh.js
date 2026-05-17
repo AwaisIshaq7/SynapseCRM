@@ -3,7 +3,7 @@ const Customer = require('../models/Customer');
 const Interaction = require('../models/Interaction');
 const User = require('../models/User');
 const axios = require('axios');
-const { sendChurnAlert } = require('./emailService');
+const { sendChurnAlert } = require('../services/emailService');
 const { createChurnNotification } = require('../controllers/notificationController');
 
 const refreshAllChurnScores = async () => {

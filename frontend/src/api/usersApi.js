@@ -13,4 +13,7 @@ export const usersApi = {
 
   logUsage: (widgetName) =>
     axiosInstance.put('/users/usage-log', { widgetName }),
+
+  sendAdminMessage: (receiverId, message) =>
+    axiosInstance.post('/notifications/admin-message', { receiverId, message }),
 }

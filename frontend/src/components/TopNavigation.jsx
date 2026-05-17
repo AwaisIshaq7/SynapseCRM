@@ -2,12 +2,13 @@ import { NavLink, useLocation } from 'react-router-dom'
 import clsx from 'clsx'
 import { useAuth } from '../hooks/useAuth'
 import Logo from './Logo'
+import Tooltip from './Tooltip'
 
 const NAV_ITEMS = [
   {
     to: '/dashboard',
     label: 'Dashboard',
-    badge: 'Live',
+    badge: 'Live Operations',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -19,7 +20,7 @@ const NAV_ITEMS = [
   {
     to: '/customers',
     label: 'Customers',
-    badge: 'CRM',
+    badge: 'CRM Database',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -31,7 +32,7 @@ const NAV_ITEMS = [
   {
     to: '/reports',
     label: 'Reports',
-    badge: 'AI',
+    badge: 'AI Analytics',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -41,9 +42,21 @@ const NAV_ITEMS = [
     roles: ['admin', 'sales_manager'],
   },
   {
+    to: '/performance',
+    label: 'Performance',
+    badge: 'Quota Tracking',
+    icon: (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+          d="M6 9H4.5a2.5 2.5 0 010-5H6M18 9h1.5a2.5 2.5 0 000-5H18M4 22h16M10 14.66V17c0 .55-.45 1-1 1H4v2h16v-2h-5c-.55 0-1-.45-1-1v-2.34M12 2a7 7 0 00-7 7v1.5a3 3 0 003 3h8a3 3 0 003-3V9a7 7 0 00-7-7z" />
+      </svg>
+    ),
+    roles: ['admin', 'sales_manager'],
+  },
+  {
     to: '/users',
     label: 'User Management',
-    badge: 'Admin',
+    badge: 'Admin Panel',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -56,7 +69,7 @@ const NAV_ITEMS = [
   {
     to: '/settings',
     label: 'Settings',
-    badge: 'Prefs',
+    badge: 'Preferences',
     icon: (
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
@@ -92,32 +105,33 @@ export default function TopNavigation() {
         {visibleItems.map((item, index) => {
           const isActive = location.pathname === item.to
           return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                clsx(
-                  'group relative flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 ease-out hover:scale-105 active:scale-95',
-                  isSalesManager ? '' : 'md:gap-3 md:px-6 md:py-3 md:rounded-xl md:font-bold md:text-base',
-                  isActive
-                    ? 'bg-linear-to-br from-blue-500 via-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 dark:from-purple-600 dark:via-purple-700 dark:to-purple-800 dark:shadow-purple-600/40'
-                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-purple-300 dark:hover:shadow-md dark:hover:shadow-purple-500/20'
-                )
-              }
-              style={{
-                animationDelay: `${index * 0.05}s`,
-                animation: 'navItemEnter 0.5s ease-out forwards'
-              }}
-            >
-              <span className={clsx(
-                'inline-flex items-center justify-center transition-transform duration-300',
-                isActive ? 'animate-pulse' : '',
-                !isSalesManager ? 'md:text-lg' : ''
-              )}>
-                {item.icon}
-              </span>
-              <span className={!isSalesManager ? 'md:tracking-tight' : ''}>{item.label}</span>
-            </NavLink>
+            <Tooltip key={item.to} content={item.badge} position="bottom" delay={400}>
+              <NavLink
+                to={item.to}
+                className={({ isActive }) =>
+                  clsx(
+                    'group relative flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 ease-out hover:scale-105 active:scale-95',
+                    isSalesManager ? '' : 'md:gap-3 md:px-6 md:py-3 md:rounded-xl md:font-bold md:text-base',
+                    isActive
+                      ? 'bg-linear-to-br from-blue-500 via-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 dark:from-purple-600 dark:via-purple-700 dark:to-purple-800 dark:shadow-purple-600/40'
+                      : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-purple-300 dark:hover:shadow-md dark:hover:shadow-purple-500/20'
+                  )
+                }
+                style={{
+                  animationDelay: `${index * 0.05}s`,
+                  animation: 'navItemEnter 0.5s ease-out forwards'
+                }}
+              >
+                <span className={clsx(
+                  'inline-flex items-center justify-center transition-transform duration-300',
+                  isActive ? 'animate-pulse' : '',
+                  !isSalesManager ? 'md:text-lg' : ''
+                )}>
+                  {item.icon}
+                </span>
+                <span className={!isSalesManager ? 'md:tracking-tight' : ''}>{item.label}</span>
+              </NavLink>
+            </Tooltip>
           )
         })}
       </div>

@@ -3,24 +3,6 @@ import { authApi } from '../api/authApi'
 import { storage } from '../utils/storage'
 
 const AuthContext = createContext(null)
-const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
-
-const DEMO_USER = {
-  id: 'demo-user',
-  name: 'Demo User',
-  email: 'demo@synapsecrm.local',
-  role: 'admin',
-  preferences: {
-    theme: storage.getTheme() || 'light',
-  },
-}
-
-const createDemoSession = (setUser, setToken) => {
-  storage.setUser(DEMO_USER)
-  storage.setToken('demo-token')
-  setUser(DEMO_USER)
-  setToken('demo-token')
-}
 
 const applyThemeToDocument = (theme) => {
   if (typeof document === 'undefined') return
@@ -58,15 +40,7 @@ export function AuthProvider({ children }) {
   // On mount — verify stored token is still valid
   useEffect(() => {
     const verifyToken = async () => {
-      // Demo mode disabled - always require login
-      // if (DEMO_MODE) {
-      //   storage.setUser(DEMO_USER)
-      //   storage.setToken('demo-token')
-      //   setUser(DEMO_USER)
-      //   setToken('demo-token')
-      //   setLoading(false)
-      //   return
-      // }
+      // Verify stored token is still valid
 
       const storedToken = storage.getToken()
       if (!storedToken) {
@@ -108,11 +82,6 @@ export function AuthProvider({ children }) {
   }, [user?.preferences?.theme])
 
   const login = useCallback(async (credentials) => {
-    // if (DEMO_MODE) {
-    //   createDemoSession(setUser, setToken)
-    //   return { success: true }
-    // }
-
     try {
       const res = await authApi.login(credentials)
       if (res.data.success) {
@@ -136,11 +105,6 @@ export function AuthProvider({ children }) {
   }, [applyTheme])
 
   const register = useCallback(async (userData) => {
-    if (DEMO_MODE) {
-      createDemoSession(setUser, setToken)
-      return { success: true }
-    }
-
     const res = await authApi.register(userData)
     if (res.data.success) {
       const { token: newToken, user: newUser } = res.data.data
@@ -157,11 +121,6 @@ export function AuthProvider({ children }) {
   }, [applyTheme])
 
   const logout = useCallback(() => {
-    if (DEMO_MODE) {
-      createDemoSession(setUser, setToken)
-      return
-    }
-
     storage.clearAll()
     setUser(null)
     setToken(null)

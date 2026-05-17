@@ -19,7 +19,7 @@ export default function CustomerDetailPage() {
   const { id }       = useParams()
   const navigate     = useNavigate()
   const { isAdmin, isSalesManager, user }  = useAuth()
-  const { customer, loading, error } = useCustomer(id)
+  const { customer, loading, error, refetch } = useCustomer(id)
 
   const [interactions,      setInteractions]      = useState([])
   const [interactionsLoad,  setInteractionsLoad]  = useState(true)
@@ -30,13 +30,25 @@ export default function CustomerDetailPage() {
     type: 'call', content: '', date: new Date().toISOString().split('T')[0]
   })
 
+  // Pagination states for interactions history
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalInteractions, setTotalInteractions] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
+
   // Fetch interactions
   useEffect(() => {
     if (!id) return
     const fetchInteractions = async () => {
       try {
-        const res = await interactionsApi.getByCustomer(id)
-        if (res.data.success) setInteractions(res.data.data)
+        const res = await interactionsApi.getByCustomer(id, { page: 1, limit: 10 })
+        if (res.data.success) {
+          setInteractions(res.data.data)
+          if (res.data.pagination) {
+            setTotalPages(res.data.pagination.totalPages)
+            setTotalInteractions(res.data.pagination.total)
+          }
+        }
       } catch {
         // Silent fail — interactions are not critical
       } finally {
@@ -45,6 +57,23 @@ export default function CustomerDetailPage() {
     }
     fetchInteractions()
   }, [id])
+
+  const handleLoadMore = async () => {
+    if (page >= totalPages) return
+    setLoadingMore(true)
+    try {
+      const nextPage = page + 1
+      const res = await interactionsApi.getByCustomer(id, { page: nextPage, limit: 10 })
+      if (res.data.success) {
+        setInteractions(prev => [...prev, ...res.data.data])
+        setPage(nextPage)
+      }
+    } catch {
+      toast.error('Failed to load more interactions')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   const handleAddInteraction = async (e) => {
     e.preventDefault()
@@ -59,15 +88,20 @@ export default function CustomerDetailPage() {
         setInteractions(prev => [res.data.data, ...prev])
         setNewInteraction({ type: 'call', content: '', date: new Date().toISOString().split('T')[0] })
         setShowAddForm(false)
-        toast.success('Interaction logged')
+        toast.success('Interaction logged. AI is analyzing in the background... 🧠')
 
-        // ⭐ Sentiment drop alert — Week 6 requirement
-        const sentimentScore = res.data.data?.sentimentScore
-        if (sentimentScore !== null && sentimentScore !== undefined && sentimentScore < -0.5) {
-          toast.error(`⚠️ Negative sentiment detected (score: ${sentimentScore.toFixed(2)}). Consider following up urgently.`, {
-            duration: 6000,
-          })
-        }
+        // Fetch again after 2.5 seconds to populate background AI results (sentiment score, churn risk update)
+        setTimeout(async () => {
+          try {
+            refetch()
+            const updatedHistory = await interactionsApi.getByCustomer(id, { page: 1, limit: 10 })
+            if (updatedHistory.data.success) {
+              setInteractions(updatedHistory.data.data)
+            }
+          } catch (err) {
+            console.warn('Silent background update failed:', err)
+          }
+        }, 2500)
       }
     } catch {
       toast.error('Failed to log interaction')
@@ -192,7 +226,7 @@ export default function CustomerDetailPage() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Interaction History
-            <span className="ml-2 text-sm font-normal text-gray-500">({interactions.length})</span>
+            <span className="ml-2 text-sm font-normal text-gray-500">({totalInteractions})</span>
           </h2>
           <button
             onClick={() => setShowAddForm(v => !v)}
@@ -268,61 +302,83 @@ export default function CustomerDetailPage() {
             <p className="text-sm">No interactions yet. Log the first one above.</p>
           </div>
         ) : (
-          <ol className="space-y-3" aria-label="Interaction history">
-            {interactions.map((interaction, idx) => (
-              <li
-                key={interaction._id}
-                className="flex gap-3 group"
-              >
-                {/* Timeline dot */}
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-sm">
-                    {getInteractionIcon(interaction.type)}
-                  </div>
-                  {idx < interactions.length - 1 && (
-                    <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700 mt-1" aria-hidden="true" />
-                  )}
-                </div>
-                {/* Content */}
-                <div className="flex-1 pb-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
-                        {interaction.type}
-                      </span>
-                      <SentimentBadge score={interaction.sentimentScore} label={interaction.sentimentLabel} size="xs" />
+          <>
+            <ol className="space-y-3" aria-label="Interaction history">
+              {interactions.map((interaction, idx) => (
+                <li
+                  key={interaction._id}
+                  className="flex gap-3 group"
+                >
+                  {/* Timeline dot */}
+                  <div className="flex flex-col items-center">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-sm">
+                      {getInteractionIcon(interaction.type)}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-gray-400" title={formatDate(interaction.date)}>
-                        {timeAgo(interaction.date)}
-                      </span>
-                      {(isAdmin || (isSalesManager && (interaction.userId?._id?.toString?.() || interaction.userId?.toString()) === user?._id?.toString())) && (
-                        <button
-                          onClick={() => handleDeleteInteraction(interaction._id)}
-                          className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50
-                                     dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-opacity"
-                          aria-label="Delete interaction"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
+                    {idx < interactions.length - 1 && (
+                      <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700 mt-1" aria-hidden="true" />
+                    )}
                   </div>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-                    {interaction.content}
-                  </p>
-                  {interaction.sentimentScore !== null && interaction.sentimentScore !== undefined && (
-                    <p className="mt-1 text-xs text-gray-400">
-                      Sentiment score: {interaction.sentimentScore.toFixed(2)}
+                  {/* Content */}
+                  <div className="flex-1 pb-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+                          {interaction.type}
+                        </span>
+                        <SentimentBadge score={interaction.sentimentScore} label={interaction.sentimentLabel} size="xs" />
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-gray-400" title={formatDate(interaction.date)}>
+                          {timeAgo(interaction.date)}
+                        </span>
+                        {(isAdmin || (isSalesManager && (interaction.userId?._id?.toString?.() || interaction.userId?.toString()) === user?._id?.toString())) && (
+                          <button
+                            onClick={() => handleDeleteInteraction(interaction._id)}
+                            className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50
+                                       dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Delete interaction"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                      {interaction.content}
                     </p>
+                    {interaction.sentimentScore !== null && interaction.sentimentScore !== undefined && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        Sentiment score: {interaction.sentimentScore.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+            
+            {/* Load More Button */}
+            {page < totalPages && (
+              <div className="flex justify-center mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="btn-secondary text-sm px-6 py-2 rounded-xl flex items-center gap-2"
+                >
+                  {loadingMore ? (
+                    <>
+                      <LoadingSpinner size="sm" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Load More History'
                   )}
-                </div>
-              </li>
-            ))}
-          </ol>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

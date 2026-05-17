@@ -15,6 +15,7 @@ const CustomerListPage = lazy(() => import('./pages/CustomerListPage'))
 const CustomerDetailPage = lazy(() => import('./pages/CustomerDetailPage'))
 const CustomerFormPage = lazy(() => import('./pages/CustomerFormPage'))
 const ReportsPage = lazy(() => import('./pages/ReportsPage'))
+const PerformancePage = lazy(() => import('./pages/PerformancePage'))
 const UserManagementPage = lazy(() => import('./pages/UserManagementPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
@@ -76,6 +77,7 @@ export default function App() {
           <Route path="/customers/:id" element={<CustomerDetailPage />} />
           <Route path="/customers/:id/edit" element={<CustomerFormPage />} />
           <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/performance" element={<PerformancePage />} />
           <Route path="/settings" element={<SettingsPage />} />
 
           {/* Admin-only route */}

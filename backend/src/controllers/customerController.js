@@ -1,5 +1,6 @@
 const Customer = require('../models/Customer');
 const Interaction = require('../models/Interaction');
+const { escapeRegex } = require('../utils/sanitize');
 
 exports.getCustomers = async (req, res) => {
   try {
@@ -13,18 +14,36 @@ exports.getCustomers = async (req, res) => {
     if (status) filter.status = status;
 
     if (search) {
+      const safeSearch = escapeRegex(search);
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { company: { $regex: search, $options: 'i' } },
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } },
+        { company: { $regex: safeSearch, $options: 'i' } },
       ];
     }
 
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+    const skip = (page - 1) * limit;
+
+    const total = await Customer.countDocuments(filter);
     const customers = await Customer.find(filter)
       .populate('assignedTo', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    res.status(200).json({ success: true, count: customers.length, data: customers });
+    res.status(200).json({
+      success: true,
+      count: customers.length,
+      data: customers,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -138,11 +157,12 @@ exports.searchCustomers = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
+    const safeQ = escapeRegex(q);
     let filter = {
       $or: [
-        { name: { $regex: q, $options: 'i' } },
-        { email: { $regex: q, $options: 'i' } },
-        { company: { $regex: q, $options: 'i' } },
+        { name: { $regex: safeQ, $options: 'i' } },
+        { email: { $regex: safeQ, $options: 'i' } },
+        { company: { $regex: safeQ, $options: 'i' } },
       ],
     };
 

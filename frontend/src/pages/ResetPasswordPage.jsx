@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { authApi } from '../api/authApi'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { Lock, Eye, EyeOff } from 'lucide-react'
@@ -26,10 +27,9 @@ export default function ResetPasswordPage() {
         return
       }
       try {
-        const res = await fetch(`/api/auth/validate-reset/${encodeURIComponent(token)}`)
-        const data = await res.json()
+        const res = await authApi.validateResetToken(token)
         if (!mounted) return
-        if (res.ok && data.success) setTokenValid(true)
+        if (res.data.success) setTokenValid(true)
         else setTokenValid(false)
       } catch {
         if (!mounted) return

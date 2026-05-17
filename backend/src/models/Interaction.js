@@ -41,4 +41,7 @@ const interactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// High-speed compound index for chronologically sorted customer timelines
+interactionSchema.index({ customerId: 1, date: -1 });
+
 module.exports = mongoose.model('Interaction', interactionSchema);
