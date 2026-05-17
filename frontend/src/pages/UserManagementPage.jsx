@@ -3,6 +3,7 @@ import { usersApi } from '../api/usersApi'
 import { useAuth } from '../hooks/useAuth'
 import LoadingSpinner from '../components/LoadingSpinner'
 import EmptyState from '../components/EmptyState'
+import ConfirmModal from '../components/hci/ConfirmModal'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 
@@ -11,6 +12,7 @@ export default function UserManagementPage() {
   const [users,   setUsers]   = useState([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -26,17 +28,23 @@ export default function UserManagementPage() {
     fetchUsers()
   }, [])
 
-  const handleDelete = async (userId, userName) => {
+  const openDeleteConfirm = (userId, userName) => {
     if (userId === currentUser?._id) {
       toast.error("You can't delete your own account")
       return
     }
-    if (!window.confirm(`Delete user "${userName}"? This cannot be undone.`)) return
-    setDeleting(userId)
+    setDeleteTarget({ id: userId, name: userName })
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return
+    const { id } = deleteTarget
+    setDeleting(id)
     try {
-      await usersApi.deleteUser(userId)
-      setUsers(prev => prev.filter(u => u._id !== userId))
+      await usersApi.deleteUser(id)
+      setUsers(prev => prev.filter(u => u._id !== id))
       toast.success('User deleted')
+      setDeleteTarget(null)
     } catch {
       toast.error('Failed to delete user')
     } finally {
@@ -117,7 +125,7 @@ export default function UserManagementPage() {
                     </td>
                     <td className="px-6 py-4">
                       <button
-                        onClick={() => handleDelete(u._id, u.name)}
+                        onClick={() => openDeleteConfirm(u._id, u.name)}
                         disabled={deleting === u._id || u._id === currentUser?._id}
                         className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 font-medium
                                    disabled:opacity-40 disabled:cursor-not-allowed"
@@ -133,6 +141,21 @@ export default function UserManagementPage() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete user?"
+        message={
+          deleteTarget
+            ? `Are you sure you want to delete "${deleteTarget.name}"? This cannot be undone.`
+            : ''
+        }
+        confirmLabel="Yes"
+        cancelLabel="No"
+        variant="danger"
+      />
     </div>
   )
 }

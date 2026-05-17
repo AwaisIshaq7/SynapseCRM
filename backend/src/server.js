@@ -5,30 +5,50 @@ const app = require('./app');
 const { startChurnRefresh } = require('./utils/churnRefresh');
 const { generateDailyRiskReport } = require('./services/ragBatchService');
 const { isMailConfigured } = require('./services/emailService');
+const { seedDemoUser } = require('./utils/seedDemoUser');
+const { syncInboxToDatabase, isImapConfigured } = require('./services/emailSyncService');
 
 dotenv.config();
 
-// DB Connection
-const connectionOptions = {
-  // Railway MongoDB requires these specific authentication settings
-  authSource: 'admin',           // Critical for Railway
-  retryWrites: false,            // Railway doesn't support retryWrites
-  directConnection: true,        // Use direct connection to proxy
-  
-  // Connection pool
-  maxPoolSize: 10,
-  minPoolSize: 2,
-  
-  // Timeouts
-  connectTimeoutMS: 10000,
-  serverSelectionTimeoutMS: 10000,
-  socketTimeoutMS: 45000,
-};
+// DB Connection — Atlas (srv or replica set) vs Railway single-host proxy
+const mongoUri = process.env.MONGO_URI || '';
+const isAtlas =
+  mongoUri.startsWith('mongodb+srv') ||
+  mongoUri.includes('replicaSet=') ||
+  mongoUri.includes('.mongodb.net');
+const connectionOptions = isAtlas
+  ? {
+      maxPoolSize: 10,
+      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    }
+  : {
+      authSource: 'admin',
+      retryWrites: false,
+      directConnection: true,
+      maxPoolSize: 10,
+      minPoolSize: 2,
+      connectTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    };
 
 mongoose.connect(process.env.MONGO_URI, connectionOptions)
-  .then(() => {
+  .then(async () => {
     console.log('✅ MongoDB connected');
+    await seedDemoUser();
     startChurnRefresh();
+
+    if (process.env.SYNC_EMAILS_ON_START === 'true' && isImapConfigured()) {
+      syncInboxToDatabase()
+        .then((stats) => {
+          console.log(
+            `📬 Email sync on startup: ${stats.interactionsCreated} interaction(s), ${stats.customersCreated} new customer(s)`
+          );
+        })
+        .catch((err) => console.warn('⚠️ Email sync on startup skipped:', err.message));
+    }
 
     if (process.env.NODE_ENV === 'production' && !isMailConfigured()) {
       console.warn('⚠️ Password reset and alert email delivery is not configured. Set SMTP_USER and SMTP_PASS for Gmail SMTP in production use.');

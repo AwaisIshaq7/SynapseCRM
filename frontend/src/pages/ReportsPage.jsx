@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import Breadcrumbs from '../components/hci/Breadcrumbs'
 import { Line, Bar, Doughnut } from 'react-chartjs-2'
 import {
   Chart as ChartJS, CategoryScale, LinearScale, PointElement,
@@ -180,7 +182,9 @@ export default function ReportsPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-        <div className="page-section-enter rounded-2xl bg-linear-to-r from-purple-50/50 to-pink-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6">
+      <Breadcrumbs items={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Reports' }]} />
+
+      <div className="page-section-enter rounded-2xl bg-linear-to-r from-purple-50/50 to-pink-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Reports & Analytics</h1>

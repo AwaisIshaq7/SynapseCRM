@@ -1,33 +1,148 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const User = require('../models/User');
-const { sendPasswordResetEmail } = require('../services/emailService');
+const { sendPasswordResetEmail, sendVerificationEmail, isMailConfigured } = require('../services/emailService');
+const { DEMO_EMAIL } = require('../utils/seedDemoUser');
+
+const frontendBase = () => (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/$/, '');
 
 const generateToken = (id, expiresIn = '1h') => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn });
 };
 
-// POST /api/auth/register
+// POST /api/auth/register — account inactive until email verified
 exports.register = async (req, res) => {
   try {
-    const { name, email, password, role = 'sales_manager' } = req.body;
+    const name = req.body.name?.trim();
+    const email = req.body.email?.trim().toLowerCase();
+    const { password, role = 'sales_manager' } = req.body;
 
-    // Allow registration for any role (including admin).
+    if (!name || !email || !password) {
+      return res.status(400).json({ success: false, error: 'Name, email, and password are required' });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, error: 'Enter a valid email address' });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      if (existingUser.emailVerified === false) {
+        return res.status(400).json({
+          success: false,
+          error: 'Email already registered but not verified. Check your inbox or resend verification.',
+          code: 'EMAIL_NOT_VERIFIED',
+        });
+      }
       return res.status(400).json({ success: false, error: 'Email already registered' });
     }
 
-    const user = await User.create({ name, email, password, role });
-    const token = generateToken(user._id);
+    if (!isMailConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error: 'Email verification is not available. Configure SMTP in backend/.env',
+      });
+    }
+
+    const user = await User.create({
+      name,
+      email,
+      password,
+      role,
+      emailVerified: false,
+    });
+
+    const rawToken = user.generateVerificationToken();
+    await user.save({ validateBeforeSave: false });
+
+    const verifyLink = `${frontendBase()}/verify-email/${rawToken}`;
+    const mailResult = await sendVerificationEmail(user.email, user.name, verifyLink);
+    if (mailResult?.skipped) {
+      await User.deleteOne({ _id: user._id });
+      return res.status(503).json({ success: false, error: 'Could not send verification email' });
+    }
 
     res.status(201).json({
       success: true,
       data: {
-        token,
-        user: { _id: user._id, name: user.name, email: user.email, role: user.role },
+        message: 'Verification email sent. Please confirm your email before signing in.',
+        email: user.email,
+        requiresVerification: true,
       },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// GET /api/auth/verify-email/:token
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token) {
+      return res.status(400).json({ success: false, error: 'Verification token is required' });
+    }
+
+    const hashed = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({
+      verificationToken: hashed,
+    }).select('+verificationToken +verificationTokenExpiry');
+
+    if (!user) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired verification link' });
+    }
+
+    if (user.emailVerified) {
+      return res.status(200).json({
+        success: true,
+        data: { message: 'Email already verified. You can sign in now.', email: user.email },
+      });
+    }
+
+    if (!user.verificationTokenExpiry || user.verificationTokenExpiry <= Date.now()) {
+      return res.status(400).json({ success: false, error: 'Invalid or expired verification link' });
+    }
+
+    user.emailVerified = true;
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+      success: true,
+      data: { message: 'Email verified. You can sign in now.', email: user.email },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+// POST /api/auth/resend-verification
+exports.resendVerification = async (req, res) => {
+  try {
+    const email = req.body.email?.trim().toLowerCase();
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email }).select('+verificationToken +verificationTokenExpiry');
+    if (!user || user.emailVerified) {
+      return res.status(200).json({
+        success: true,
+        data: { message: 'If an unverified account exists, a new email has been sent.' },
+      });
+    }
+
+    if (!isMailConfigured()) {
+      return res.status(503).json({ success: false, error: 'Email is not configured' });
+    }
+
+    const rawToken = user.generateVerificationToken();
+    await user.save({ validateBeforeSave: false });
+    const verifyLink = `${frontendBase()}/verify-email/${rawToken}`;
+    await sendVerificationEmail(user.email, user.name, verifyLink);
+
+    res.status(200).json({
+      success: true,
+      data: { message: 'If an unverified account exists, a new email has been sent.' },
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -37,7 +152,12 @@ exports.register = async (req, res) => {
 // POST /api/auth/login
 exports.login = async (req, res) => {
   try {
-    const { email, password, rememberMe } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
+    const { password, rememberMe } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    }
 
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
@@ -49,15 +169,30 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid email or password' });
     }
 
-    // If remember me is checked, token expires in 7 days; otherwise 1 hour
-    const expiresIn = rememberMe ? '7d' : '1h';
+    const isDemo = email === DEMO_EMAIL;
+    if (user.emailVerified === false && !isDemo) {
+      return res.status(403).json({
+        success: false,
+        error: 'Please verify your email before signing in. Check your inbox or resend verification.',
+        code: 'EMAIL_NOT_VERIFIED',
+      });
+    }
+
+    const expiresIn = rememberMe ? '30d' : '8h';
     const token = generateToken(user._id, expiresIn);
 
     res.status(200).json({
       success: true,
       data: {
         token,
-        user: { _id: user._id, name: user.name, role: user.role },
+        rememberMe: Boolean(rememberMe),
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          emailVerified: user.emailVerified !== false,
+        },
       },
     });
   } catch (err) {
@@ -87,12 +222,13 @@ exports.getMe = async (req, res) => {
 // POST /api/auth/forgot-password
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.trim().toLowerCase();
 
     if (!email) {
       return res.status(400).json({ success: false, data: null, error: 'Email is required' });
     }
 
+    // Any address registered in SynapseCRM (Gmail, Outlook, work email, etc.)
     const user = await User.findOne({ email });
     if (!user) {
       // Don't reveal if email exists (security best practice)
@@ -110,7 +246,14 @@ exports.forgotPassword = async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`;
     const resetLink = `${frontendUrl.replace(/\/$/, '')}/reset-password/${resetToken}`;
 
-    await sendPasswordResetEmail(user.email, user.name, resetLink);
+    const mailResult = await sendPasswordResetEmail(user.email, user.name, resetLink);
+    if (mailResult?.skipped) {
+      return res.status(503).json({
+        success: false,
+        data: null,
+        error: 'Email is not configured. Set SMTP_USER and SMTP_PASS in backend/.env',
+      });
+    }
 
     const data = process.env.NODE_ENV === 'test'
       ? { resetToken, resetLink, mailMode: 'smtp_or_skipped' }
@@ -125,7 +268,11 @@ exports.forgotPassword = async (req, res) => {
       error: null,
     });
   } catch (err) {
-    res.status(500).json({ success: false, data: null, error: err.message });
+    const msg = err.code === 'EAUTH'
+      ? 'Gmail rejected SMTP login. Use a 16-character App Password (no spaces), not your normal Gmail password.'
+      : err.message;
+    console.error('forgot-password email error:', err.message);
+    res.status(500).json({ success: false, data: null, error: msg });
   }
 };
 

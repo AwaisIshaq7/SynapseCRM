@@ -15,6 +15,8 @@ import StatCard from '../components/StatCard'
 import SentimentBadge from '../components/SentimentBadge'
 import LoadingSpinner from '../components/LoadingSpinner'
 import AdminOverviewPanel from '../components/admin/AdminOverviewPanel'
+import Breadcrumbs from '../components/hci/Breadcrumbs'
+import RecentCustomers from '../components/hci/RecentCustomers'
 import toast from 'react-hot-toast'
 import { timeAgo } from '../utils/formatters'
 import { getChurnRiskClasses } from '../utils/sentimentUtils'
@@ -607,6 +609,9 @@ export default function DashboardPage() {
 
   return (
     <div ref={dashboardRef} className="max-w-7xl mx-auto space-y-6">
+      <Breadcrumbs items={[{ label: 'Dashboard' }]} />
+      <RecentCustomers className="card p-4" />
+
       {/* Top Bar with Search and Notifications */}
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur dark:border-slate-700 dark:bg-slate-900/90">
         {/* Global Search Bar */}

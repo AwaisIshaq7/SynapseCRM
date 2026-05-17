@@ -7,6 +7,12 @@ export const authApi = {
   register: (userData) =>
     axiosInstance.post('/auth/register', userData),
 
+  verifyEmail: (token) =>
+    axiosInstance.get(`/auth/verify-email/${encodeURIComponent(token)}`),
+
+  resendVerification: (email) =>
+    axiosInstance.post('/auth/resend-verification', { email }),
+
   getMe: () =>
     axiosInstance.get('/auth/me'),
 

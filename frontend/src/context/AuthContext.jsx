@@ -70,15 +70,16 @@ export function AuthProvider({ children }) {
 
       const storedToken = storage.getToken()
       if (!storedToken) {
-        // No token - theme already applied from localStorage via state init
         setLoading(false)
         return
       }
+      setToken(storedToken)
+      const remember = storage.getRememberMe()
       try {
         const res = await authApi.getMe()
         if (res.data.success) {
           setUser(res.data.data)
-          storage.setUser(res.data.data)
+          storage.setUser(res.data.data, remember)
           // Sync theme from backend user preferences (if available)
           const userTheme = res.data.data?.preferences?.theme
           if (userTheme) {
@@ -117,8 +118,10 @@ export function AuthProvider({ children }) {
       const res = await authApi.login(credentials)
       if (res.data.success) {
         const { token: newToken, user: newUser } = res.data.data
-        storage.setToken(newToken)
-        storage.setUser(newUser)
+        const remember = Boolean(credentials.rememberMe)
+        storage.setRememberMe(remember, credentials.email?.trim().toLowerCase() || '')
+        storage.setToken(newToken, remember)
+        storage.setUser(newUser, remember)
         setToken(newToken)
         setUser(newUser)
         // Apply theme from user preferences or fallback to stored theme
@@ -126,11 +129,12 @@ export function AuthProvider({ children }) {
         applyTheme(userTheme)
         return { success: true }
       }
-      return { success: false, error: res.data.error }
+      return { success: false, error: res.data.error, code: res.data.code }
     } catch (err) {
       return {
         success: false,
         error: err.response?.data?.error || err.message || 'Login failed',
+        code: err.response?.data?.code,
       }
     }
   }, [applyTheme])
@@ -141,19 +145,30 @@ export function AuthProvider({ children }) {
       return { success: true }
     }
 
-    const res = await authApi.register(userData)
-    if (res.data.success) {
-      const { token: newToken, user: newUser } = res.data.data
-      storage.setToken(newToken)
-      storage.setUser(newUser)
-      setToken(newToken)
-      setUser(newUser)
-      // Apply theme from user preferences or fallback to stored theme
-      const userTheme = newUser?.preferences?.theme || storage.getTheme()
-      applyTheme(userTheme)
-      return { success: true }
+    try {
+      const res = await authApi.register(userData)
+      if (res.data.success) {
+        if (res.data.data?.requiresVerification) {
+          return {
+            success: true,
+            requiresVerification: true,
+            email: res.data.data.email,
+            message: res.data.data.message,
+          }
+        }
+        const { token: newToken, user: newUser } = res.data.data
+        storage.setToken(newToken, true)
+        storage.setUser(newUser, true)
+        setToken(newToken)
+        setUser(newUser)
+        const userTheme = newUser?.preferences?.theme || storage.getTheme()
+        applyTheme(userTheme)
+        return { success: true }
+      }
+      return { success: false, error: res.data.error }
+    } catch (err) {
+      return { success: false, error: err.response?.data?.error || err.message }
     }
-    return { success: false, error: res.data.error }
   }, [applyTheme])
 
   const logout = useCallback(() => {
@@ -165,6 +180,9 @@ export function AuthProvider({ children }) {
     storage.clearAll()
     setUser(null)
     setToken(null)
+    if (!storage.getRememberMe()) {
+      storage.setRememberMe(false)
+    }
     // Preserve user's theme preference even after logout
     const storedTheme = storage.getTheme()
     setTheme(storedTheme)

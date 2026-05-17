@@ -29,7 +29,13 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     const requestUrl = error.config?.url || ''
-    const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register') || requestUrl.includes('/auth/forgot-password') || requestUrl.includes('/auth/reset-password')
+    const isAuthEndpoint =
+      requestUrl.includes('/auth/login') ||
+      requestUrl.includes('/auth/register') ||
+      requestUrl.includes('/auth/forgot-password') ||
+      requestUrl.includes('/auth/reset-password') ||
+      requestUrl.includes('/auth/verify-email') ||
+      requestUrl.includes('/auth/resend-verification')
 
     if (error.response?.status === 401 && !isAuthEndpoint) {
       // Token expired or invalid — clear storage and redirect

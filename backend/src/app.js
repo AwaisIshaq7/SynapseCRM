@@ -71,6 +71,7 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/rag', require('./routes/ragRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/emails', require('./routes/emailRoutes'));
 
 app.get('/', (req, res) => {
   res.json({ message: 'SynapseCRM API is running' });

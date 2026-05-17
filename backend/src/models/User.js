@@ -46,6 +46,20 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+      default: null,
+      select: false,
+    },
+    verificationTokenExpiry: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   { timestamps: true }
 );
@@ -68,6 +82,14 @@ userSchema.methods.generateResetToken = function () {
   this.resetToken = crypto.createHash('sha256').update(resetToken).digest('hex');
   this.resetTokenExpiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
   return resetToken;
+};
+
+userSchema.methods.generateVerificationToken = function () {
+  const crypto = require('crypto');
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  this.verificationToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+  this.verificationTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  return rawToken;
 };
 
 module.exports = mongoose.model('User', userSchema);

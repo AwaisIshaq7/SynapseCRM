@@ -25,6 +25,7 @@ export default function Navbar() {
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Welcome back, <span className="font-semibold text-slate-900 dark:text-white">{user?.name}</span>
         </p>
+        <p className="text-[10px] text-slate-400 mt-0.5">Ctrl+Shift+D dashboard · Ctrl+Shift+C customers</p>
       </div>
 
       {/* Right section */}

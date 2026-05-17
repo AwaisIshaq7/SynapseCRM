@@ -4,6 +4,8 @@ import { usersApi } from '../api/usersApi'
 import ThemeToggle from '../components/ThemeToggle'
 import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
+import Breadcrumbs from '../components/hci/Breadcrumbs'
+import FieldHelp from '../components/hci/FieldHelp'
 
 const WIDGET_LABELS = {
   summary:   '📊 Overview Stats',
@@ -48,12 +50,13 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-        <div className="rounded-2xl bg-linear-to-r from-orange-50/50 to-amber-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6 mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
-        </div>
+      <Breadcrumbs items={[{ label: 'Dashboard', to: '/dashboard' }, { label: 'Settings' }]} />
 
-      {/* Appearance */}
-      <div className="card">
+      <div className="rounded-2xl bg-linear-to-r from-orange-50/50 to-amber-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6 mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+      </div>
+
+      <div className="card section-accent-appearance">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Appearance</h2>
         <div className="flex items-center justify-between">
           <div>
@@ -66,9 +69,11 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Widget Order */}
-      <div className="card">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Dashboard Widget Order</h2>
+      <div className="card section-accent-dashboard">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 inline-flex items-center gap-1">
+          Dashboard Widget Order
+          <FieldHelp text="Reorder widgets on your dashboard. Order is saved to your account." />
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Drag or use arrows to reorder widgets. The system also auto-adapts after 5 interactions.
         </p>
@@ -116,8 +121,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Account Info */}
-      <div className="card">
+      <div className="card section-accent-account">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Account</h2>
         <div className="space-y-3 text-sm">
           {[

@@ -15,10 +15,16 @@ export function useKeyboardShortcuts() {
         navigate('/dashboard')
       }
 
-      // Cmd/Ctrl + K for Quick search/command palette (future feature)
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      // Cmd/Ctrl + Shift + C — Customers (habituation / spatial memory, HCI #3)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
         e.preventDefault()
-        // Can be extended for command palette
+        navigate('/customers')
+      }
+
+      // Cmd/Ctrl + Shift + R — Reports
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault()
+        navigate('/reports')
       }
     }
 

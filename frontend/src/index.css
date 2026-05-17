@@ -500,4 +500,38 @@
   .card-glow:hover {
     animation: smoothGlow 1.5s ease-in-out infinite;
   }
+
+  /* HCI #14 — annotated scrollbar on long main regions */
+  .scroll-region-annotated {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(37, 99, 235, 0.45) transparent;
+  }
+
+  .scroll-region-annotated::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scroll-region-annotated::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: linear-gradient(180deg, rgba(37, 99, 235, 0.5), rgba(16, 185, 129, 0.35));
+  }
+
+  /* HCI #15 — color-coded settings sections */
+  .section-accent-appearance {
+    @apply border-l-4 border-l-blue-500 pl-4;
+  }
+
+  .section-accent-dashboard {
+    @apply border-l-4 border-l-violet-500 pl-4;
+  }
+
+  .section-accent-account {
+    @apply border-l-4 border-l-emerald-500 pl-4;
+  }
+
+  /* HCI #16 — diagonal balance in form headers */
+  .form-header-diagonal {
+    @apply flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4;
+  }
 }

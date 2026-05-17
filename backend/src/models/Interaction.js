@@ -37,6 +37,21 @@ const interactionSchema = new mongoose.Schema(
       type: Date,
       required: [true, 'Date is required'],
     },
+    externalMessageId: {
+      type: String,
+      sparse: true,
+      unique: true,
+      index: true,
+    },
+    emailSubject: {
+      type: String,
+      trim: true,
+    },
+    emailFrom: {
+      type: String,
+      lowercase: true,
+      trim: true,
+    },
   },
   { timestamps: true }
 );

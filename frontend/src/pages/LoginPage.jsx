@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { storage } from '../utils/storage'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
@@ -10,11 +11,20 @@ import {
 } from 'lucide-react'
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({ email: '', password: '' })
+  const [formData, setFormData] = useState({
+    email: storage.getSavedEmail(),
+    password: '',
+  })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
+  const [rememberMe, setRememberMe] = useState(() => storage.getRememberMe())
+
+  useEffect(() => {
+    if (storage.getRememberMe() && storage.getSavedEmail()) {
+      setFormData((prev) => ({ ...prev, email: storage.getSavedEmail() }))
+    }
+  }, [])
 
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -47,7 +57,12 @@ export default function LoginPage() {
         toast.success('Welcome back! 🎉')
         navigate('/dashboard', { replace: true })
       } else {
-        if (result.error?.toLowerCase().includes('user not found') || result.error?.toLowerCase().includes('email')) {
+        if (result.code === 'EMAIL_NOT_VERIFIED') {
+          toast.error(result.error)
+          navigate(`/check-email?email=${encodeURIComponent(formData.email.trim())}`)
+          return
+        }
+        if (result.error?.toLowerCase().includes('email')) {
           setErrors({ email: result.error })
         } else if (result.error?.toLowerCase().includes('password')) {
           setErrors({ password: result.error })
@@ -95,9 +110,22 @@ export default function LoginPage() {
   const logoFilter = 'brightness(0) saturate(100%) invert(68%) sepia(96%) saturate(748%) hue-rotate(248deg) brightness(92%) contrast(96%)'
 
   // Demo Login Handler
-  const handleDemoLogin = () => {
-    setFormData({ email: 'demo@synapsecrm.com', password: 'demo1234' })
-    toast.success('Demo credentials filled!', { icon: '🚀' })
+  const handleDemoLogin = async () => {
+    const demo = { email: 'demo@synapsecrm.com', password: 'Demo@1234', rememberMe: true }
+    setFormData({ email: demo.email, password: demo.password })
+    setRememberMe(true)
+    setLoading(true)
+    try {
+      const result = await login(demo)
+      if (result.success) {
+        toast.success('Welcome to the demo workspace!')
+        navigate('/dashboard', { replace: true })
+      } else {
+        toast.error(result.error || 'Demo login failed. Restart the backend to seed the demo user.')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -221,12 +249,7 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="password" className="block text-sm font-medium text-zinc-700">Password</label>
-                  <Link to="/forgot-password" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
-                    Forgot password?
-                  </Link>
-                </div>
+                <label htmlFor="password" className="block text-sm font-medium text-zinc-700 mb-1.5">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                   <input
@@ -254,16 +277,21 @@ export default function LoginPage() {
                 {errors.password && <p className="mt-1.5 text-xs text-red-600 font-medium">{errors.password}</p>}
               </div>
 
-              <label className="flex items-center cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  disabled={loading}
-                  className="w-4 h-4 accent-indigo-600 border-zinc-300 rounded"
-                />
-                <span className="ml-3 text-sm text-zinc-600">Keep me signed in</span>
-              </label>
+              <div className="flex items-center justify-between gap-4">
+                <label className="flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={loading}
+                    className="w-4 h-4 accent-indigo-600 border-zinc-300 rounded"
+                  />
+                  <span className="ml-2 text-sm text-zinc-600">Keep me signed in</span>
+                </label>
+                <Link to="/forgot-password" className="text-sm text-indigo-600 hover:text-indigo-700 font-medium whitespace-nowrap">
+                  Forgot password?
+                </Link>
+              </div>
 
               <button
                 type="submit"
@@ -294,9 +322,6 @@ export default function LoginPage() {
                 <PlayCircle className="w-5 h-5" />
                 Try Demo Account
               </button>
-              <p className="text-center text-[13px] text-zinc-500 mt-1.5">
-                Want to explore? Use demo credentials
-              </p>
             </div>
 
             {/* Register Link */}

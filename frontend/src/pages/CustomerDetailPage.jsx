@@ -12,6 +12,9 @@ import clsx from 'clsx'
 import { getStatusClasses, getChurnRiskClasses } from '../utils/sentimentUtils'
 import { capitalize, formatDate, timeAgo, getInteractionIcon } from '../utils/formatters'
 import { Bot } from 'lucide-react'
+import Breadcrumbs from '../components/hci/Breadcrumbs'
+import ConfirmModal from '../components/hci/ConfirmModal'
+import { storage } from '../utils/storage'
 
 const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note']
 
@@ -26,6 +29,8 @@ export default function CustomerDetailPage() {
   const [showAddForm,       setShowAddForm]        = useState(false)
   const [showRAG,           setShowRAG]            = useState(false)
   const [submitting,        setSubmitting]         = useState(false)
+  const [confirmDelete,     setConfirmDelete]      = useState(false)
+  const [deleteInteraction, setDeleteInteraction]  = useState(null)
   const [newInteraction,    setNewInteraction]     = useState({
     type: 'call', content: '', date: new Date().toISOString().split('T')[0]
   })
@@ -45,6 +50,10 @@ export default function CustomerDetailPage() {
     }
     fetchInteractions()
   }, [id])
+
+  useEffect(() => {
+    if (customer) storage.addRecentCustomer(customer)
+  }, [customer])
 
   const handleAddInteraction = async (e) => {
     e.preventDefault()
@@ -76,14 +85,28 @@ export default function CustomerDetailPage() {
     }
   }
 
-  const handleDeleteInteraction = async (interactionId) => {
-    if (!window.confirm('Delete this interaction?')) return
+  const handleDeleteInteraction = async () => {
+    if (!deleteInteraction) return
     try {
-      await interactionsApi.delete(interactionId)
-      setInteractions(prev => prev.filter(i => i._id !== interactionId))
+      await interactionsApi.delete(deleteInteraction)
+      setInteractions((prev) => prev.filter((i) => i._id !== deleteInteraction))
       toast.success('Interaction deleted')
     } catch {
       toast.error('Failed to delete interaction')
+    } finally {
+      setDeleteInteraction(null)
+    }
+  }
+
+  const handleDeleteCustomer = async () => {
+    try {
+      await customersApi.delete(id)
+      toast.success('Customer deleted')
+      navigate('/customers')
+    } catch {
+      toast.error('Failed to delete')
+    } finally {
+      setConfirmDelete(false)
     }
   }
 
@@ -107,14 +130,13 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      {/* Breadcrumb */}
-      <nav aria-label="Breadcrumb">
-        <ol className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
-          <li><Link to="/customers" className="hover:text-brand-600 dark:hover:text-brand-400">Customers</Link></li>
-          <li aria-hidden="true">›</li>
-          <li className="text-gray-900 dark:text-white font-medium">{customer.name}</li>
-        </ol>
-      </nav>
+      <Breadcrumbs
+        items={[
+          { label: 'Dashboard', to: '/dashboard' },
+          { label: 'Customers', to: '/customers' },
+          { label: customer.name },
+        ]}
+      />
 
       {/* Customer header card */}
       <div className="card">
@@ -154,18 +176,8 @@ export default function CustomerDetailPage() {
               ✏️ Edit
             </Link>
             {(isAdmin || (isSalesManager && customer.assignedTo?._id?.toString() === user?._id?.toString())) && (
-              <button
-                onClick={() => {
-                  if (window.confirm('Delete this customer? This cannot be undone.')) {
-                    customersApi.delete(id).then(() => {
-                      toast.success('Customer deleted')
-                      navigate('/customers')
-                    }).catch(() => toast.error('Failed to delete'))
-                  }
-                }}
-                className="btn-danger text-sm"
-              >
-                🗑️ Delete
+              <button type="button" onClick={() => setConfirmDelete(true)} className="btn-danger text-sm">
+                Delete
               </button>
             )}
           </div>
@@ -298,7 +310,8 @@ export default function CustomerDetailPage() {
                       </span>
                       {(isAdmin || (isSalesManager && (interaction.userId?._id?.toString?.() || interaction.userId?.toString()) === user?._id?.toString())) && (
                         <button
-                          onClick={() => handleDeleteInteraction(interaction._id)}
+                          type="button"
+                          onClick={() => setDeleteInteraction(interaction._id)}
                           className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50
                                      dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-opacity"
                           aria-label="Delete interaction"
@@ -326,6 +339,13 @@ export default function CustomerDetailPage() {
         )}
       </div>
 
+      <p className="text-sm text-gray-500">
+        Curious why churn spiked?{' '}
+        <Link to="/reports" className="text-brand-600 hover:underline font-medium">
+          Explore churn trends in Reports →
+        </Link>
+      </p>
+
       {showRAG && (
         <RAGChat
           customerId={customer._id}
@@ -333,6 +353,25 @@ export default function CustomerDetailPage() {
           onClose={() => setShowRAG(false)}
         />
       )}
+
+      <ConfirmModal
+        isOpen={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={handleDeleteCustomer}
+        title="Delete customer?"
+        message="This cannot be undone. All interactions will be removed."
+        confirmLabel="Delete"
+        variant="danger"
+      />
+      <ConfirmModal
+        isOpen={!!deleteInteraction}
+        onClose={() => setDeleteInteraction(null)}
+        onConfirm={handleDeleteInteraction}
+        title="Delete interaction?"
+        message="Remove this entry from the timeline?"
+        confirmLabel="Delete"
+        variant="danger"
+      />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import LoadingSpinner from '../components/LoadingSpinner'
 import AnimatedAuthBackground from '../components/AnimatedAuthBackground'
 import { ArrowRightIcon } from '@heroicons/react/24/outline'
+import { Eye, EyeOff } from 'lucide-react'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -16,6 +17,8 @@ export default function RegisterPage() {
   })
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
 
@@ -65,7 +68,12 @@ export default function RegisterPage() {
       const result = await register(submitData)
       
       if (result.success) {
-        toast.success('Account created successfully! 🚀 Please sign in.')
+        if (result.requiresVerification) {
+          toast.success('Check your email to verify your account')
+          navigate(`/check-email?email=${encodeURIComponent(formData.email.trim())}`, { replace: true })
+          return
+        }
+        toast.success('Account created successfully!')
         navigate('/login', { replace: true })
       } else {
         toast.error(result.error || 'Registration failed')
@@ -238,18 +246,29 @@ export default function RegisterPage() {
                   <label htmlFor="password" className="label">
                     Password
                   </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className={`input ${errors.password ? 'border-red-500' : ''}`}
-                    placeholder="Minimum 8 characters"
-                    disabled={loading}
-                    aria-invalid={!!errors.password}
-                  />
+                  <div className="relative">
+                    <input
+                      id="password"
+                      name="password"
+                      type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      className={`input pr-11 ${errors.password ? 'border-red-500' : ''}`}
+                      placeholder="Minimum 8 characters"
+                      disabled={loading}
+                      aria-invalid={!!errors.password}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      disabled={loading}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                  </div>
                   {errors.password && (
                     <p className="mt-1.5 text-xs text-red-600 dark:text-red-400" role="alert">
                       {errors.password}
@@ -262,18 +281,29 @@ export default function RegisterPage() {
                   <label htmlFor="confirmPassword" className="label">
                     Confirm password
                   </label>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    autoComplete="new-password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className={`input ${errors.confirmPassword ? 'border-red-500' : ''}`}
-                    placeholder="Re-enter password"
-                    disabled={loading}
-                    aria-invalid={!!errors.confirmPassword}
-                  />
+                  <div className="relative">
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className={`input pr-11 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                      placeholder="Re-enter password"
+                      disabled={loading}
+                      aria-invalid={!!errors.confirmPassword}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      disabled={loading}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showConfirmPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </button>
+                  </div>
                   {errors.confirmPassword && (
                     <p className="mt-1.5 text-xs text-red-600 dark:text-red-400" role="alert">
                       {errors.confirmPassword}

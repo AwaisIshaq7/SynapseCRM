@@ -1,11 +1,13 @@
 import { Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import Navbar from './Navbar'
 import TopNavigation from './TopNavigation'
 import Sidebar from './Sidebar'
 
 const Layout = () => {
   const { user } = useAuth()
+  useKeyboardShortcuts()
   const location = useLocation()
   const routeKey = location.pathname.split('/')[1] || 'dashboard'
 
@@ -34,7 +36,7 @@ const Layout = () => {
           <Sidebar />
           <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden">
             <Navbar />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+            <main className="flex-1 overflow-x-hidden overflow-y-auto scroll-region-annotated px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
               <div key={location.pathname} className="mx-auto w-full max-w-7xl page-route-enter">
                 <Outlet />
               </div>
@@ -46,7 +48,7 @@ const Layout = () => {
           <TopNavigation />
           <div className="relative z-10 flex flex-1 flex-col overflow-hidden">
             <Navbar />
-            <main className="flex-1 overflow-x-hidden overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
+            <main className="flex-1 overflow-x-hidden overflow-y-auto scroll-region-annotated px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
               <div key={location.pathname} className="mx-auto w-full max-w-7xl page-route-enter">
                 <Outlet />
               </div>
