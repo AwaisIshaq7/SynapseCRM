@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Notification = require('../models/Notification');
 
 // PUT /api/users/preferences
 exports.updatePreferences = async (req, res) => {
@@ -57,6 +58,29 @@ exports.getUsers = async (req, res) => {
       count: users.length,
       data: users,
     });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+exports.sendAdminMessage = async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message?.trim()) {
+      return res.status(400).json({ success: false, error: 'Message is required' });
+    }
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ success: false, error: 'User not found' });
+    if (target.role !== 'sales_manager') {
+      return res.status(400).json({ success: false, error: 'Messages can only be sent to sales managers' });
+    }
+    await Notification.create({
+      userId: target._id,
+      type: 'system',
+      message: `Message from admin: ${message.trim()}`,
+      data: { fromAdminId: req.user._id, fromAdminName: req.user.name },
+    });
+    res.status(201).json({ success: true, message: 'Message sent' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

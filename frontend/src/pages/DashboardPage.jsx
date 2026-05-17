@@ -18,6 +18,8 @@ import AdminOverviewPanel from '../components/admin/AdminOverviewPanel'
 import Breadcrumbs from '../components/hci/Breadcrumbs'
 import RecentCustomers from '../components/hci/RecentCustomers'
 import PriorityInbox from '../components/PriorityInbox'
+import SystemStabilityWidget from '../components/dashboard/SystemStabilityWidget'
+import { useNotifications } from '../hooks/useNotifications'
 import toast from 'react-hot-toast'
 import { timeAgo } from '../utils/formatters'
 import { getChurnRiskClasses } from '../utils/sentimentUtils'
@@ -78,9 +80,7 @@ export default function DashboardPage() {
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [searching, setSearching] = useState(false)
 
-  // ─── NEW: Notifications State ──────────────────────────────
-  const [notifications, setNotifications] = useState([])
-  const [unreadCount, setUnreadCount] = useState(0)
+  const { notifications, unreadCount, connected: sseConnected, markAsRead: markNotificationRead } = useNotifications()
   const [showNotifications, setShowNotifications] = useState(false)
 
   const dashboardRef = useRef(null)
@@ -151,39 +151,6 @@ export default function DashboardPage() {
     }
   }, [])
 
-  // ─── NEW: Fetch Notifications ──────────────────────────────
-  const fetchNotifications = useCallback(async () => {
-    try {
-      const response = await fetch('/api/notifications', {
-        headers: { 'Authorization': `Bearer ${storage.getToken()}` }
-      })
-      const data = await response.json()
-      if (data.success) {
-        setNotifications(data.data)
-        setUnreadCount(data.data.filter(n => !n.read).length)
-      }
-    } catch (error) {
-      console.error('Failed to fetch notifications:', error)
-    }
-  }, [])
-
-  // ─── NEW: Mark Notification as Read ────────────────────────
-  const markNotificationRead = async (notificationId) => {
-    try {
-      await fetch('/api/notifications/mark-read', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${storage.getToken()}`
-        },
-        body: JSON.stringify({ notificationIds: [notificationId] })
-      })
-      fetchNotifications()
-    } catch (error) {
-      console.error('Failed to mark notification:', error)
-    }
-  }
-
   // ─── NEW: Global Search ────────────────────────────────────
   const handleSearch = useCallback(async (query) => {
     if (!query.trim() || query.length < 2) {
@@ -248,14 +215,9 @@ export default function DashboardPage() {
 
   // Initial data fetch for enhancements - FIXED: added dependencies
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      fetchNotifications()
-      fetchKPITrends()
-      fetchAdminOverview()
-    }, 0)
-
-    return () => window.clearTimeout(timer)
-  }, [fetchNotifications, fetchKPITrends, fetchAdminOverview])
+    fetchKPITrends()
+    fetchAdminOverview()
+  }, [fetchKPITrends, fetchAdminOverview])
 
   // ─── CHART DATA ───────────────────────────────────────────
   const isDark = user?.preferences?.theme === 'dark'
@@ -541,21 +503,34 @@ export default function DashboardPage() {
           <AlertSkeleton />
         ) : summary?.churnAlerts?.length > 0 ? (
           <ul className="space-y-2">
-            {summary.churnAlerts.map((alert, idx) => {
+            {summary.churnAlerts.slice(0, 5).map((alert, idx) => {
               const churnStyles = getChurnRiskClasses(alert.churnScore)
               return (
                 <li key={alert._id} className="alert-item" style={{ animationDelay: `${idx * 0.05}s` }}>
                   <Link
                     to={`/customers/${alert._id}`}
-                    className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
+                    className="flex items-center justify-between gap-3 p-3 rounded-lg bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors"
                   >
-                    <div>
+                    <div className="min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white">{alert.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{alert.company}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                        {alert.company || alert.email}
+                        {alert.status === 'at_risk' && (
+                          <span className="ml-1 text-red-600 font-semibold">· At risk</span>
+                        )}
+                      </p>
+                      {alert.overallSentiment && (
+                        <p className="text-[10px] text-slate-400 mt-0.5 capitalize">Sentiment: {alert.overallSentiment}</p>
+                      )}
                     </div>
-                    <span className={clsx('text-xs font-bold', churnStyles.text)}>
-                      {churnStyles.label} {alert.churnScore != null ? `(${(alert.churnScore * 100).toFixed(0)}%)` : ''}
-                    </span>
+                    <div className="text-right shrink-0">
+                      <span className={clsx('text-xs font-bold block', churnStyles.text)}>
+                        {churnStyles.label}
+                      </span>
+                      <span className="text-[10px] text-red-600 dark:text-red-400 font-semibold">
+                        {alert.churnScore != null ? `${(alert.churnScore * 100).toFixed(0)}% churn` : '—'}
+                      </span>
+                    </div>
                   </Link>
                 </li>
               )
@@ -745,12 +720,14 @@ export default function DashboardPage() {
               <span className="font-semibold text-emerald-600">Active</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-600 dark:text-slate-300">Churn refresh</span>
-              <span className="font-semibold text-emerald-600">Scheduled</span>
+              <span className="text-slate-600 dark:text-slate-300">Churn prediction</span>
+              <span className="font-semibold text-emerald-600">Random Forest</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-slate-600 dark:text-slate-300">Synapse AI</span>
-              <span className="font-semibold text-brand-600">On demand</span>
+              <span className="text-slate-600 dark:text-slate-300">Realtime push</span>
+              <span className={clsx('font-semibold', sseConnected ? 'text-emerald-600' : 'text-slate-500')}>
+                {sseConnected ? 'Active' : 'Offline'}
+              </span>
             </div>
           </div>
         </div>
@@ -766,11 +743,14 @@ export default function DashboardPage() {
 
           <div className="space-y-6">
             <div className="page-section-enter rounded-3xl border border-slate-200 bg-linear-to-r from-slate-900 to-slate-950 p-6 text-white shadow-lg shadow-slate-900/20 dark:border-slate-700/70">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-300">Admin dashboard</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-slate-300">Admin command center</p>
               <h2 className="mt-2 text-2xl font-bold">Central command for team oversight</h2>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-                Monitor every sales manager, their customers, and their latest interactions from a single admin-only view.
+                Monitor sales manager productivity, customer accounts distribution, and overall risk levels across your portfolio.
               </p>
+            </div>
+            <div className="page-section-enter" style={{ animationDelay: '0.1s' }}>
+              <SystemStabilityWidget sseConnected={sseConnected} />
             </div>
           </div>
         </div>

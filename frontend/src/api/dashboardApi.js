@@ -12,4 +12,7 @@ export const dashboardApi = {
 
   getAdminOverview: () =>
     axiosInstance.get('/dashboard/admin-overview'),
+
+  getSystemHealth: () =>
+    axiosInstance.get('/dashboard/system-health'),
 }

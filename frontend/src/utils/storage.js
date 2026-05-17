@@ -93,6 +93,7 @@ export const storage = {
     const list = storage.getRecentCustomers().filter((c) => c.id !== id)
     list.unshift(entry)
     localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)))
+    window.dispatchEvent(new CustomEvent('synapsecrm:recent-customers-updated'))
   },
 
   getCustomerFilters: () => {

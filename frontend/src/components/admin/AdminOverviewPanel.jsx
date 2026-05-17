@@ -62,9 +62,12 @@ export default function AdminOverviewPanel({ data, loading }) {
                   <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{manager.name}</p>
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">{manager.email}</p>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex flex-col items-end gap-1">
                   <p className="text-sm font-semibold text-slate-900 dark:text-white">{manager.customerCount}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400">customers</p>
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    {(manager.avgChurnScore ?? 0).toFixed(2)}
+                  </span>
                 </div>
               </div>
               {manager.atRiskCount > 0 && (

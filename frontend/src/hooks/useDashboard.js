@@ -9,6 +9,7 @@ export function useDashboard(days = 7) {
   const [error,         setError]         = useState(null)
 
   useEffect(() => {
+    let cancelled = false
     const fetchAll = async () => {
       setLoading(true)
       try {
@@ -18,6 +19,7 @@ export function useDashboard(days = 7) {
           dashboardApi.getChurnDistribution(),
         ])
 
+        if (cancelled) return
         if (summaryRes.status === 'fulfilled' && summaryRes.value.data.success) {
           setSummary(summaryRes.value.data.data)
         }
@@ -28,12 +30,17 @@ export function useDashboard(days = 7) {
           setChurnDist(churnRes.value.data.data)
         }
       } catch {
-        setError('Dashboard data unavailable')
+        if (!cancelled) setError('Dashboard data unavailable')
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     fetchAll()
+    const id = setInterval(fetchAll, 45000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
   }, [days])
 
   return { summary, sentimentTrend, churnDist, loading, error }

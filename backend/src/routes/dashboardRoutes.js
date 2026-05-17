@@ -6,6 +6,7 @@ const {
   getChurnDistribution,
   getAdminOverview,
   getKpiTrends,
+  getSystemHealth,
 } = require('../controllers/dashboardController');
 const { protect, authorize } = require('../middleware/auth');
 
@@ -16,5 +17,6 @@ router.get('/sentiment-trend', getSentimentTrend);
 router.get('/churn-distribution', getChurnDistribution);
 router.get('/trends', getKpiTrends);
 router.get('/admin-overview', authorize('admin'), getAdminOverview);
+router.get('/system-health', getSystemHealth);
 
 module.exports = router;

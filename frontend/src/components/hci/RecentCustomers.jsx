@@ -1,10 +1,33 @@
+import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { storage } from '../../utils/storage'
 import { timeAgo } from '../../utils/formatters'
 
-/** Prospective memory — quick return to recently viewed customers (HCI #5). */
+export const RECENT_CUSTOMERS_EVENT = 'synapsecrm:recent-customers-updated'
+
+/** Prospective memory — quick return to recently viewed customers; auto-refreshes. */
 export default function RecentCustomers({ className = '' }) {
-  const recent = storage.getRecentCustomers()
+  const [recent, setRecent] = useState(() => storage.getRecentCustomers())
+
+  const refresh = useCallback(() => {
+    setRecent(storage.getRecentCustomers())
+  }, [])
+
+  useEffect(() => {
+    refresh()
+    const onStorage = (e) => {
+      if (e.key === 'synapsecrm_recent_customers' || !e.key) refresh()
+    }
+    const onCustom = () => refresh()
+    window.addEventListener('storage', onStorage)
+    window.addEventListener(RECENT_CUSTOMERS_EVENT, onCustom)
+    const id = setInterval(refresh, 5000)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener(RECENT_CUSTOMERS_EVENT, onCustom)
+      clearInterval(id)
+    }
+  }, [refresh])
 
   if (!recent.length) return null
 

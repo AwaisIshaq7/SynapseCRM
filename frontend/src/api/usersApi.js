@@ -7,6 +7,9 @@ export const usersApi = {
   deleteUser: (userId) =>
     axiosInstance.delete(`/users/${userId}`),
 
+  sendAdminMessage: (userId, message) =>
+    axiosInstance.post(`/users/${userId}/message`, { message }),
+
   updatePreferences: (prefs) =>
     axiosInstance.put('/users/preferences', prefs),
     // prefs: { theme, widgetOrder }
