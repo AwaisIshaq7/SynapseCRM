@@ -12,6 +12,7 @@ const companyFromEmail = (email) => {
 };
 
 const { analyzeEmailWithAI, updateCustomerFromInteractions } = require('./emailIntelligenceService');
+const { cleanEmailBody } = require('../utils/emailBodyCleaner');
 
 /**
  * Import inbox emails as customers + email interactions.
@@ -76,10 +77,11 @@ const syncInboxToDatabase = async ({
       }
     }
 
-    const content = `Subject: ${mail.subject}\n\n${mail.text || '(empty body)'}`;
+    const cleanedBody = cleanEmailBody(mail.text || '') || '(empty body)';
+    const content = `Subject: ${mail.subject}\n\n${cleanedBody}`;
     const analysis = await analyzeEmailWithAI({
       subject: mail.subject,
-      body: mail.text,
+      body: cleanedBody,
       daysSinceContact: 0,
       churnScore: customer.churnScore || 0,
     });
@@ -89,7 +91,7 @@ const syncInboxToDatabase = async ({
       userId: assignee._id,
       type: 'email',
       content,
-      emailBody: mail.text || '',
+      emailBody: cleanedBody,
       date: mail.date,
       externalMessageId: mail.messageId,
       emailSubject: mail.subject,

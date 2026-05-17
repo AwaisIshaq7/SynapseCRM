@@ -6,7 +6,9 @@ import SentimentBadge from './SentimentBadge'
 import PriorityBadge from './PriorityBadge'
 import { customersApi } from '../api/customersApi'
 
-export default function EmailInsightPanel({ customer, onAnalyzed }) {
+import CustomerSentimentChart from './CustomerSentimentChart'
+
+export default function EmailInsightPanel({ customer, interactions = [], onAnalyzed }) {
   const [analyzing, setAnalyzing] = useState(false)
   const [loadingReply, setLoadingReply] = useState(false)
   const [suggestedReply, setSuggestedReply] = useState('')
@@ -77,6 +79,11 @@ export default function EmailInsightPanel({ customer, onAnalyzed }) {
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <SentimentBadge label={customer.overallSentiment} size="sm" />
         <PriorityBadge priority={customer.priority} score={customer.priorityScore} />
+      </div>
+
+      <div className="mb-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Last 3 days</p>
+        <CustomerSentimentChart interactions={interactions} />
       </div>
 
       {customer.emailInsight && (

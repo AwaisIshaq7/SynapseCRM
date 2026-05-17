@@ -2,6 +2,7 @@ const Interaction = require('../models/Interaction');
 const Customer = require('../models/Customer');
 const { syncInboxToDatabase, isImapConfigured } = require('../services/emailSyncService');
 const { sendReply } = require('../services/emailReplyService');
+const { cleanEmailBody } = require('../utils/emailBodyCleaner');
 
 const scopeFilter = async (user, customerId) => {
   const filter = { type: 'email' };
@@ -28,7 +29,7 @@ exports.listMailbox = async (req, res) => {
       .populate('customerId', 'name email company priority overallSentiment')
       .populate('userId', 'name')
       .sort({ date: -1 })
-      .limit(Math.min(Number(req.query.limit) || 300, 500));
+      .limit(Math.min(Number(req.query.limit) || 150, 150));
 
     res.status(200).json({ success: true, count: emails.length, data: emails });
   } catch (err) {
@@ -52,7 +53,18 @@ exports.getEmail = async (req, res) => {
       }
     }
 
-    res.status(200).json({ success: true, data: email });
+    const data = email.toObject ? email.toObject() : email
+    if (!data.emailBody?.trim() && data.content) {
+      const match = data.content.match(/^Subject:\s*.+?\n\n([\s\S]*)$/i)
+      if (match) data.emailBody = match[1].trim()
+    }
+    if (data.emailBody) data.emailBody = cleanEmailBody(data.emailBody)
+    if (data.content) {
+      const match = data.content.match(/^(Subject:\s*.+?\n\n)([\s\S]*)$/i)
+      if (match) data.content = match[1] + cleanEmailBody(match[2])
+    }
+
+    res.status(200).json({ success: true, data });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

@@ -465,11 +465,12 @@ export default function DashboardPage() {
               onClick={() => setShowDatePicker(!showDatePicker)}
               className="px-3 py-1.5 text-sm border rounded-lg dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
             >
-              {dateRange === '7d' ? 'Last 7 days' : dateRange === '14d' ? 'Last 14 days' : 'Last 30 days'}
+              {dateRange === '3d' ? 'Last 3 days' : dateRange === '7d' ? 'Last 7 days' : dateRange === '14d' ? 'Last 14 days' : 'Last 30 days'}
             </button>
             {showDatePicker && (
               <div className="absolute right-0 mt-2 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-xl border z-10">
                 <div className="space-y-2">
+                  <button onClick={() => { setDateRange('3d'); fetchSentimentWithDateRange('3d'); setShowDatePicker(false); }} className="block w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Last 3 days</button>
                   <button onClick={() => { setDateRange('7d'); fetchSentimentWithDateRange('7d'); setShowDatePicker(false); }} className="block w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Last 7 days</button>
                   <button onClick={() => { setDateRange('14d'); fetchSentimentWithDateRange('14d'); setShowDatePicker(false); }} className="block w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Last 14 days</button>
                   <button onClick={() => { setDateRange('30d'); fetchSentimentWithDateRange('30d'); setShowDatePicker(false); }} className="block w-full text-left px-3 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">Last 30 days</button>

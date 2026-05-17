@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { Mail, RefreshCw, Send, Inbox, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import {
+  Mail, RefreshCw, Send, Inbox, ArrowDownLeft, ArrowUpRight,
+  Sparkles, User, Calendar, Search,
+} from 'lucide-react'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { emailApi } from '../api/emailApi'
@@ -9,8 +12,12 @@ import Breadcrumbs from '../components/hci/Breadcrumbs'
 import LoadingSpinner from '../components/LoadingSpinner'
 import SentimentBadge from '../components/SentimentBadge'
 import PriorityBadge from '../components/PriorityBadge'
-import { getEmailBody, getEmailSubject, getPreviewLine } from '../utils/emailHelpers'
+import {
+  getEmailBody, getEmailSubject, getPreviewLine, getSenderLabel,
+} from '../utils/emailHelpers'
 import { formatDate, timeAgo } from '../utils/formatters'
+
+const MAILBOX_LIMIT = 150
 
 export default function EmailInboxPage() {
   const [searchParams] = useSearchParams()
@@ -19,23 +26,27 @@ export default function EmailInboxPage() {
   const [emails, setEmails] = useState([])
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [loadingDetail, setLoadingDetail] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [replyText, setReplyText] = useState('')
   const [replySubject, setReplySubject] = useState('')
   const [sending, setSending] = useState(false)
   const [suggestLoading, setSuggestLoading] = useState(false)
-  const [config, setConfig] = useState(null)
+  const [search, setSearch] = useState('')
 
   const loadMailbox = useCallback(async () => {
     try {
-      const params = customerFilter ? { customerId: customerFilter } : {}
+      const params = {
+        limit: MAILBOX_LIMIT,
+        ...(customerFilter ? { customerId: customerFilter } : {}),
+      }
       const res = await emailApi.getMailbox(params)
       if (res.data.success) {
-        setEmails(res.data.data)
-        setSelected((prev) => {
-          if (!prev) return res.data.data[0] || null
-          return res.data.data.find((e) => e._id === prev._id) || res.data.data[0] || null
-        })
+        const list = res.data.data || []
+        setEmails(list)
+        const keep = list.find((e) => e._id === selected?._id) || list[0] || null
+        setSelected(keep)
+        if (keep) loadEmailDetail(keep)
       }
     } catch {
       toast.error('Failed to load emails')
@@ -44,13 +55,41 @@ export default function EmailInboxPage() {
     }
   }, [customerFilter])
 
-  useEffect(() => {
-    loadMailbox()
-    emailApi.getConfigStatus().then((r) => r.data.success && setConfig(r.data.data)).catch(() => {})
-  }, [loadMailbox])
+  const loadEmailDetail = useCallback(async (item) => {
+    if (!item?._id) return
+    setLoadingDetail(true)
+    try {
+      const res = await emailApi.getEmail(item._id)
+      if (res.data.success) {
+        setSelected(res.data.data)
+      }
+    } catch {
+      setSelected(item)
+    } finally {
+      setLoadingDetail(false)
+    }
+  }, [])
 
   useEffect(() => {
-    const interval = setInterval(loadMailbox, 5 * 60 * 1000)
+    setLoading(true)
+    loadMailbox()
+  }, [loadMailbox])
+
+  // Poll mailbox + light Gmail sync so new messages appear without manual refresh
+  useEffect(() => {
+    let syncing = false
+    const refresh = async () => {
+      if (syncing) return
+      syncing = true
+      try {
+        await emailApi.sync({ limit: 40, sinceDays: 14 })
+      } catch {
+        // IMAP may be unconfigured — still reload local mailbox
+      }
+      await loadMailbox()
+      syncing = false
+    }
+    const interval = setInterval(refresh, 90 * 1000)
     return () => clearInterval(interval)
   }, [loadMailbox])
 
@@ -58,14 +97,19 @@ export default function EmailInboxPage() {
     if (selected) {
       const sub = getEmailSubject(selected)
       setReplySubject(sub.startsWith('Re:') ? sub : `Re: ${sub}`)
-      setReplyText('')
     }
-  }, [selected?._id])
+  }, [selected?._id, selected?.emailSubject])
+
+  const handleSelect = (item) => {
+    setSelected(item)
+    setReplyText('')
+    loadEmailDetail(item)
+  }
 
   const handleSync = async () => {
     setSyncing(true)
     try {
-      const res = await emailApi.sync({ limit: 200, sinceDays: 180 })
+      const res = await emailApi.sync({ limit: MAILBOX_LIMIT, sinceDays: 180 })
       if (res.data.success) {
         toast.success(res.data.data.message)
         await loadMailbox()
@@ -78,8 +122,8 @@ export default function EmailInboxPage() {
   }
 
   const handleSuggest = async () => {
-    if (!selected?.customerId?._id && !selected?.customerId) return
-    const cid = selected.customerId._id || selected.customerId
+    const cid = selected?.customerId?._id || selected?.customerId || customerFilter
+    if (!cid) return
     setSuggestLoading(true)
     try {
       const res = await customersApi.getSuggestedResponse(cid)
@@ -93,11 +137,17 @@ export default function EmailInboxPage() {
 
   const handleSendReply = async (e) => {
     e.preventDefault()
-    if (!selected || !replyText.trim()) return
+    if (!replyText.trim()) return
+    const cid = selected?.customerId?._id || selected?.customerId || customerFilter
+    if (!selected?._id && !cid) {
+      toast.error('Select an email or open inbox from a customer profile to send')
+      return
+    }
     setSending(true)
     try {
       const res = await emailApi.reply({
-        interactionId: selected._id,
+        ...(selected?._id ? { interactionId: selected._id } : {}),
+        ...(cid ? { customerId: cid } : {}),
         message: replyText.trim(),
         subject: replySubject,
       })
@@ -105,7 +155,9 @@ export default function EmailInboxPage() {
         toast.success(res.data.data.message)
         setReplyText('')
         await loadMailbox()
-        setSelected(res.data.data.interaction)
+        if (res.data.data.interaction) {
+          setSelected(res.data.data.interaction)
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to send reply')
@@ -114,10 +166,20 @@ export default function EmailInboxPage() {
     }
   }
 
+  const filtered = emails.filter((item) => {
+    if (!search.trim()) return true
+    const q = search.toLowerCase()
+    const body = getEmailBody(item).toLowerCase()
+    const sub = getEmailSubject(item).toLowerCase()
+    const from = (item.emailFrom || item.customerId?.name || '').toLowerCase()
+    return sub.includes(q) || body.includes(q) || from.includes(q)
+  })
+
   const customer = selected?.customerId
+  const bodyText = selected ? getEmailBody(selected) : ''
 
   return (
-    <div className="max-w-[1600px] mx-auto h-[calc(100vh-8rem)] flex flex-col">
+    <div className="flex flex-col h-[calc(100vh-5.5rem)] max-w-[1680px] mx-auto">
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/dashboard' },
@@ -125,87 +187,106 @@ export default function EmailInboxPage() {
         ]}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+      {/* Header */}
+      <header className="shrink-0 mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Inbox className="w-7 h-7 text-indigo-600" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-500/25">
+              <Inbox className="w-5 h-5" />
+            </span>
             Email inbox
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Two-panel view — click an email to read · reply sends to customer&apos;s real address
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 ml-12 sm:ml-0">
+            Latest <strong>{MAILBOX_LIMIT}</strong> emails · auto-sync ~90s · Send replies via Gmail
           </p>
         </div>
         <button
           type="button"
           onClick={handleSync}
           disabled={syncing}
-          className="btn-primary inline-flex items-center gap-2"
+          className="btn-primary inline-flex items-center justify-center gap-2 shrink-0"
         >
-          {syncing ? <LoadingSpinner size="sm" /> : <RefreshCw className="w-4 h-4" />}
-          Sync all emails
+          {syncing ? <LoadingSpinner size="sm" /> : <RefreshCw className={clsx('w-4 h-4', syncing && 'animate-spin')} />}
+          Sync from Gmail
         </button>
-      </div>
+      </header>
 
-      {config && (
-        <div className="mb-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-400">
-          <strong className="text-slate-800 dark:text-slate-200">Keys in use:</strong>{' '}
-          Gmail SMTP/IMAP ({config.imapUser || 'not set'}) —{' '}
-          {config.smtpConfigured ? '✅ connected' : '❌ missing SMTP_USER / SMTP_PASS'} ·{' '}
-          Groq AI — {config.groqConfigured ? '✅ active' : '⚠️ not set (template replies only)'} ·{' '}
-          Auto-sync every 5 min when backend is running
-        </div>
-      )}
-
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[minmax(280px,360px)_1fr] gap-4">
-        {/* Left — email list */}
-        <div className="card flex flex-col min-h-0 p-0 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 font-medium text-sm text-gray-700 dark:text-gray-300">
-            {emails.length} email{emails.length !== 1 ? 's' : ''}
-          </div>
-          {loading ? (
-            <div className="flex-1 flex items-center justify-center p-8">
-              <LoadingSpinner />
+      {/* Two-panel layout */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-0 lg:gap-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl shadow-slate-200/50 dark:shadow-none overflow-hidden">
+        {/* —— Left: list —— */}
+        <aside className="flex flex-col min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/80">
+          <div className="shrink-0 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Latest {filtered.length} of {MAILBOX_LIMIT}
+              </span>
             </div>
-          ) : emails.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-gray-500">
-              <Mail className="w-12 h-12 mb-3 opacity-40" />
-              <p className="text-sm">No emails yet. Click &quot;Sync all emails&quot; to import from Gmail.</p>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search subject or sender…"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500"
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="flex-1 flex items-center justify-center py-16">
+              <LoadingSpinner size="lg" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+              <Mail className="w-14 h-14 text-slate-300 dark:text-slate-600 mb-3" />
+              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">No emails found</p>
+              <p className="text-xs text-slate-400 mt-1">Sync from Gmail to import messages</p>
             </div>
           ) : (
-            <ul className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
-              {emails.map((item) => {
+            <ul className="flex-1 overflow-y-auto overscroll-contain">
+              {filtered.map((item) => {
                 const isActive = selected?._id === item._id
-                const c = item.customerId
+                const inbound = item.emailDirection !== 'outbound'
                 return (
                   <li key={item._id}>
                     <button
                       type="button"
-                      onClick={() => setSelected(item)}
+                      onClick={() => handleSelect(item)}
                       className={clsx(
-                        'w-full text-left px-4 py-3 transition-colors',
+                        'w-full text-left px-4 py-3.5 border-b border-slate-100 dark:border-slate-800 transition-all',
                         isActive
-                          ? 'bg-indigo-50 dark:bg-indigo-900/30 border-l-4 border-indigo-500'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 border-l-4 border-transparent'
+                          ? 'bg-indigo-50 dark:bg-indigo-950/40 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-800'
+                          : 'hover:bg-white dark:hover:bg-slate-800/60'
                       )}
                     >
-                      <div className="flex items-center gap-1.5 mb-1">
-                        {item.emailDirection === 'outbound' ? (
-                          <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        ) : (
-                          <ArrowDownLeft className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                        )}
-                        <span className="text-xs font-semibold text-gray-900 dark:text-white truncate">
-                          {c?.name || item.emailFrom}
-                        </span>
-                      </div>
-                      <p className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
-                        {getEmailSubject(item)}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1 line-clamp-2">{getPreviewLine(item)}</p>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        <SentimentBadge label={item.sentimentLabel} size="xs" />
-                        <PriorityBadge priority={item.priority} size="xs" />
-                        <span className="text-[10px] text-gray-400 ml-auto">{timeAgo(item.date)}</span>
+                      <div className="flex gap-2">
+                        <div
+                          className={clsx(
+                            'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+                            inbound ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/40' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40'
+                          )}
+                        >
+                          {inbound ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                              {getSenderLabel(item)}
+                            </span>
+                            <span className="text-[10px] text-slate-400 shrink-0">{timeAgo(item.date)}</span>
+                          </div>
+                          <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate mt-0.5">
+                            {getEmailSubject(item)}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2 leading-relaxed">
+                            {getPreviewLine(item, 120)}
+                          </p>
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            <SentimentBadge label={item.sentimentLabel} size="xs" />
+                            <PriorityBadge priority={item.priority} size="xs" />
+                          </div>
+                        </div>
                       </div>
                     </button>
                   </li>
@@ -213,95 +294,183 @@ export default function EmailInboxPage() {
               })}
             </ul>
           )}
-        </div>
+        </aside>
 
-        {/* Right — reader + reply */}
-        <div className="card flex flex-col min-h-0 p-0 overflow-hidden">
+        {/* —— Right: reader —— */}
+        <main className="flex flex-col min-h-0 bg-white dark:bg-slate-950">
           {!selected ? (
-            <div className="flex-1 flex items-center justify-center text-gray-400 text-sm p-8">
-              Select an email to read
-            </div>
-          ) : (
             <>
-              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 shrink-0">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {getEmailSubject(selected)}
-                    </h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {selected.emailDirection === 'outbound' ? 'To' : 'From'}:{' '}
-                      <span className="font-medium text-gray-700 dark:text-gray-300">
-                        {selected.emailDirection === 'outbound' ? selected.emailTo : selected.emailFrom}
-                      </span>
-                      {customer && (
-                        <>
-                          {' · '}
-                          <Link to={`/customers/${customer._id}`} className="text-indigo-600 hover:underline">
-                            {customer.name}
-                          </Link>
-                        </>
-                      )}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-0.5">{formatDate(selected.date)}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <SentimentBadge label={selected.sentimentLabel} size="sm" />
-                    <PriorityBadge priority={selected.priority} size="sm" />
-                  </div>
-                </div>
-                {selected.emailInsight && (
-                  <p className="mt-3 text-xs text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-lg">
-                    {selected.emailInsight}
-                  </p>
-                )}
+              <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-12">
+                <Inbox className="w-16 h-16 mb-4 opacity-30" />
+                <p className="text-base font-medium text-slate-500">Select an email to read</p>
+                <p className="text-sm mt-1">New messages sync automatically every ~90s</p>
               </div>
-
-              <div className="flex-1 overflow-y-auto px-5 py-4">
-                <pre className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap font-sans leading-relaxed">
-                  {getEmailBody(selected) || '(empty message)'}
-                </pre>
-              </div>
-
-              {selected.emailDirection !== 'outbound' && (
+              {customerFilter && (
                 <form
                   onSubmit={handleSendReply}
-                  className="shrink-0 border-t border-gray-100 dark:border-gray-700 p-4 bg-gray-50/80 dark:bg-gray-800/30 space-y-3"
+                  className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-3"
                 >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reply via Gmail</p>
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <Send className="w-3.5 h-3.5" />
+                    New message via Gmail
+                  </p>
                   <input
                     type="text"
                     value={replySubject}
                     onChange={(e) => setReplySubject(e.target.value)}
-                    className="input text-sm"
+                    className="input text-sm bg-slate-50 dark:bg-slate-800"
                     placeholder="Subject"
                   />
                   <textarea
                     value={replyText}
                     onChange={(e) => setReplyText(e.target.value)}
-                    className="input text-sm min-h-[120px] resize-y"
-                    placeholder="Write your reply…"
+                    className="input text-sm min-h-[100px] resize-y bg-slate-50 dark:bg-slate-800 leading-relaxed"
+                    placeholder="Write your message…"
                     required
                   />
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 pt-1">
                     <button
                       type="button"
                       onClick={handleSuggest}
                       disabled={suggestLoading}
-                      className="btn-secondary text-sm"
+                      className="btn-secondary text-sm inline-flex items-center gap-1.5"
                     >
-                      {suggestLoading ? '…' : 'Suggest reply'}
+                      {suggestLoading ? <LoadingSpinner size="sm" /> : <Sparkles className="w-4 h-4" />}
+                      Suggest reply
                     </button>
-                    <button type="submit" disabled={sending} className="btn-primary text-sm inline-flex items-center gap-2 ml-auto">
+                    <button
+                      type="submit"
+                      disabled={sending || !replyText.trim()}
+                      className="btn-primary text-sm inline-flex items-center gap-2 ml-auto min-w-[140px] justify-center"
+                    >
                       {sending ? <LoadingSpinner size="sm" /> : <Send className="w-4 h-4" />}
-                      Send to {customer?.email || selected.emailFrom}
+                      Send
+                    </button>
+                  </div>
+                </form>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Email header */}
+              <div className="shrink-0 px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-linear-to-r from-slate-50 to-white dark:from-slate-900 dark:to-slate-950">
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-white leading-snug pr-4">
+                  {getEmailSubject(selected)}
+                </h2>
+                <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-600 dark:text-slate-400">
+                  <span className="inline-flex items-center gap-1.5">
+                    <User className="w-4 h-4 text-slate-400" />
+                    {selected.emailDirection === 'outbound' ? (
+                      <>To: <strong className="text-slate-800 dark:text-slate-200">{selected.emailTo}</strong></>
+                    ) : (
+                      <>From: <strong className="text-slate-800 dark:text-slate-200">{selected.emailFrom}</strong></>
+                    )}
+                  </span>
+                  {customer && (
+                    <Link
+                      to={`/customers/${customer._id || customer}`}
+                      className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      {customer.name}
+                    </Link>
+                  )}
+                  <span className="inline-flex items-center gap-1.5">
+                    <Calendar className="w-4 h-4 text-slate-400" />
+                    {formatDate(selected.date)}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <SentimentBadge label={selected.sentimentLabel} size="sm" />
+                  <PriorityBadge priority={selected.priority} size="sm" />
+                  <span className={clsx(
+                    'text-xs px-2 py-0.5 rounded-full font-medium',
+                    selected.emailDirection === 'outbound'
+                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30'
+                      : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30'
+                  )}>
+                    {selected.emailDirection === 'outbound' ? 'Sent by you' : 'Received'}
+                  </span>
+                </div>
+                {selected.emailInsight && (
+                  <p className="mt-3 text-sm text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 dark:border-amber-800/40 px-4 py-2.5 rounded-xl">
+                    {selected.emailInsight}
+                  </p>
+                )}
+              </div>
+
+              {/* Email body — real text */}
+              <div className="flex-1 min-h-0 overflow-y-auto bg-slate-50/50 dark:bg-slate-900/30">
+                {loadingDetail ? (
+                  <div className="flex items-center justify-center py-20">
+                    <LoadingSpinner />
+                  </div>
+                ) : bodyText ? (
+                  <article className="mx-4 my-4 sm:mx-6 sm:my-5 p-6 sm:p-8 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <p className="text-[15px] leading-7 text-slate-800 dark:text-slate-200 whitespace-pre-wrap break-words font-normal">
+                      {bodyText}
+                    </p>
+                  </article>
+                ) : (
+                  <div className="mx-6 my-8 p-8 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center">
+                    <Mail className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                    <p className="text-sm text-slate-500">No message body in this email</p>
+                    {selected.content && (
+                      <p className="text-xs text-slate-400 mt-2 max-w-md mx-auto truncate">
+                        Raw: {selected.content.slice(0, 200)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Compose / reply */}
+              {(customer || customerFilter) && (
+                <form
+                  onSubmit={handleSendReply}
+                  className="shrink-0 border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 space-y-3"
+                >
+                  <p className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <Send className="w-3.5 h-3.5" />
+                    {selected?.emailDirection === 'outbound' ? 'Send follow-up via Gmail' : 'Reply via Gmail'}
+                  </p>
+                  <input
+                    type="text"
+                    value={replySubject}
+                    onChange={(e) => setReplySubject(e.target.value)}
+                    className="input text-sm bg-slate-50 dark:bg-slate-800"
+                    placeholder="Subject"
+                  />
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    className="input text-sm min-h-[100px] resize-y bg-slate-50 dark:bg-slate-800 leading-relaxed"
+                    placeholder="Type your reply to the customer…"
+                    required
+                  />
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleSuggest}
+                      disabled={suggestLoading}
+                      className="btn-secondary text-sm inline-flex items-center gap-1.5"
+                    >
+                      {suggestLoading ? <LoadingSpinner size="sm" /> : <Sparkles className="w-4 h-4" />}
+                      Suggest reply
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={sending || !replyText.trim()}
+                      className="btn-primary text-sm inline-flex items-center gap-2 ml-auto min-w-[140px] justify-center"
+                    >
+                      {sending ? <LoadingSpinner size="sm" /> : <Send className="w-4 h-4" />}
+                      Send
                     </button>
                   </div>
                 </form>
               )}
             </>
           )}
-        </div>
+        </main>
       </div>
     </div>
   )

@@ -13,6 +13,7 @@ import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { getStatusClasses, getChurnRiskClasses } from '../utils/sentimentUtils'
 import { capitalize, formatDate, timeAgo, getInteractionIcon } from '../utils/formatters'
+import { getEmailBody, getEmailSubject } from '../utils/emailHelpers'
 import { Bot, Mail } from 'lucide-react'
 import Breadcrumbs from '../components/hci/Breadcrumbs'
 import ConfirmModal from '../components/hci/ConfirmModal'
@@ -211,6 +212,7 @@ export default function CustomerDetailPage() {
 
       <EmailInsightPanel
         customer={customer}
+        interactions={interactions}
         onAnalyzed={(updated) => updated && setCustomer(updated)}
       />
 
@@ -342,13 +344,15 @@ export default function CustomerDetailPage() {
                       )}
                     </div>
                   </div>
-                  {interaction.emailSubject && (
+                  {interaction.type === 'email' && (
                     <p className="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
-                      📧 {interaction.emailSubject}
+                      📧 {getEmailSubject(interaction)}
                     </p>
                   )}
                   <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                    {interaction.content}
+                    {interaction.type === 'email'
+                      ? (getEmailBody(interaction) || '(Marketing email — no readable body)')
+                      : interaction.content}
                   </p>
                   {interaction.emailInsight && (
                     <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
