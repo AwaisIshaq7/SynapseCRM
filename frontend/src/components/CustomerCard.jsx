@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import clsx from 'clsx'
 import SentimentBadge from './SentimentBadge'
+import PriorityBadge from './PriorityBadge'
 import { getStatusClasses, getChurnRiskClasses } from '../utils/sentimentUtils'
 import { capitalize, formatDate } from '../utils/formatters'
 
@@ -40,8 +41,9 @@ export default function CustomerCard({ customer, isSelected, onCardClick }) {
         {customer.phone && <p>{customer.phone}</p>}
       </div>
 
-      <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+      <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700 flex-wrap gap-2">
         <SentimentBadge label={customer.overallSentiment} size="xs" />
+        <PriorityBadge priority={customer.priority} score={customer.priorityScore} size="xs" />
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-gray-500">Churn:</span>
           <span className={clsx('text-xs font-medium', churnStyles.text)}>{churnStyles.label}</span>

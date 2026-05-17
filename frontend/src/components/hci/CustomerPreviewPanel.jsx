@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import LoadingSpinner from '../LoadingSpinner'
 import SentimentBadge from '../SentimentBadge'
+import PriorityBadge from '../PriorityBadge'
 import { capitalize } from '../../utils/formatters'
 import { getStatusClasses } from '../../utils/sentimentUtils'
 import clsx from 'clsx'
@@ -46,6 +47,7 @@ export default function CustomerPreviewPanel({ customer, loading, onClose }) {
           {capitalize(customer.status)}
         </span>
         <SentimentBadge label={customer.overallSentiment} size="xs" />
+        <PriorityBadge priority={customer.priority} score={customer.priorityScore} size="xs" />
       </div>
 
       <dl className="space-y-2 text-sm flex-1">

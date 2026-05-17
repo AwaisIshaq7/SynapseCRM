@@ -6,6 +6,8 @@ import { customersApi } from '../api/customersApi'
 import { interactionsApi } from '../api/interactionsApi'
 import RAGChat from '../components/rag/RAGChat'
 import SentimentBadge from '../components/SentimentBadge'
+import PriorityBadge from '../components/PriorityBadge'
+import EmailInsightPanel from '../components/EmailInsightPanel'
 import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
@@ -22,7 +24,7 @@ export default function CustomerDetailPage() {
   const { id }       = useParams()
   const navigate     = useNavigate()
   const { isAdmin, isSalesManager, user }  = useAuth()
-  const { customer, loading, error } = useCustomer(id)
+  const { customer, loading, error, setCustomer } = useCustomer(id)
 
   const [interactions,      setInteractions]      = useState([])
   const [interactionsLoad,  setInteractionsLoad]  = useState(true)
@@ -156,6 +158,7 @@ export default function CustomerDetailPage() {
                   {capitalize(customer.status)}
                 </span>
                 <SentimentBadge label={customer.overallSentiment} size="xs" />
+                <PriorityBadge priority={customer.priority} score={customer.priorityScore} size="xs" />
                 <span className={clsx('text-xs font-medium px-2 py-0.5 rounded-full', churnStyles.bg)}>
                   <span className={churnStyles.text}>Churn: {churnStyles.label}</span>
                 </span>
@@ -198,6 +201,11 @@ export default function CustomerDetailPage() {
           ))}
         </div>
       </div>
+
+      <EmailInsightPanel
+        customer={customer}
+        onAnalyzed={(updated) => updated && setCustomer(updated)}
+      />
 
       {/* Interactions section */}
       <div className="card">
@@ -303,6 +311,9 @@ export default function CustomerDetailPage() {
                         {interaction.type}
                       </span>
                       <SentimentBadge score={interaction.sentimentScore} label={interaction.sentimentLabel} size="xs" />
+                      {interaction.type === 'email' && interaction.priority && (
+                        <PriorityBadge priority={interaction.priority} size="xs" />
+                      )}
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-gray-400" title={formatDate(interaction.date)}>
@@ -324,9 +335,19 @@ export default function CustomerDetailPage() {
                       )}
                     </div>
                   </div>
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                  {interaction.emailSubject && (
+                    <p className="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                      📧 {interaction.emailSubject}
+                    </p>
+                  )}
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
                     {interaction.content}
                   </p>
+                  {interaction.emailInsight && (
+                    <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+                      💡 {interaction.emailInsight}
+                    </p>
+                  )}
                   {interaction.sentimentScore !== null && interaction.sentimentScore !== undefined && (
                     <p className="mt-1 text-xs text-gray-400">
                       Sentiment score: {interaction.sentimentScore.toFixed(2)}

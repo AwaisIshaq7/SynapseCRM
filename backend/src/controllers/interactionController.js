@@ -5,6 +5,7 @@ const User = require('../models/User');
 const axios = require('axios');
 const { sendSentimentAlert } = require('../utils/emailService');
 const { createSentimentNotification } = require('./notificationController');
+const { analyzeEmailWithAI, updateCustomerFromInteractions } = require('../services/emailIntelligenceService');
 
 // GET /api/customers/:id/interactions
 exports.getInteractions = async (req, res) => {
@@ -66,41 +67,52 @@ exports.createInteraction = async (req, res) => {
       sentimentLabel: null,
     });
 
-    // Try to call Flask AI service for sentiment
-    // If Flask is not running yet, interaction still saves fine
     let sentimentScore = null;
     let sentimentLabel = null;
 
     try {
-      const aiResponse = await axios.post(
-        `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/analyze`,
-        { text: content },
-        { timeout: 5000 }
-      );
+      if (type === 'email') {
+        const analysis = await analyzeEmailWithAI({
+          content,
+          daysSinceContact: Math.floor(
+            (Date.now() - new Date(date).getTime()) / (1000 * 60 * 60 * 24)
+          ),
+          churnScore: customer.churnScore || 0,
+        });
+        if (analysis) {
+          sentimentScore = analysis.score;
+          sentimentLabel = analysis.sentiment;
+          interaction.sentimentScore = sentimentScore;
+          interaction.sentimentLabel = sentimentLabel;
+          interaction.priority = analysis.priority;
+          interaction.priorityScore = analysis.priorityScore;
+          interaction.emailInsight = analysis.insight;
+          await interaction.save();
+        }
+      } else {
+        const aiResponse = await axios.post(
+          `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/analyze`,
+          { text: content },
+          { timeout: 5000 }
+        );
+        sentimentScore = aiResponse.data.score;
+        sentimentLabel = aiResponse.data.sentiment;
+        interaction.sentimentScore = sentimentScore;
+        interaction.sentimentLabel = sentimentLabel;
+        await interaction.save();
+      }
 
-      sentimentScore = aiResponse.data.score;
-      sentimentLabel = aiResponse.data.sentiment;
-
-      // Update interaction with sentiment
-      interaction.sentimentScore = sentimentScore;
-      interaction.sentimentLabel = sentimentLabel;
-      await interaction.save();
-
-      // Save to SentimentLog
-      await SentimentLog.create({
-        customerId: req.params.id,
-        interactionId: interaction._id,
-        sentimentScore,
-        sentimentLabel,
-      });
-
-      // Update customer overall sentiment and last contact date
-      await updateCustomerSentiment(req.params.id);
-
-      await checkSentimentAlert(req.params.id, req.user._id);
-
+      if (sentimentScore != null) {
+        await SentimentLog.create({
+          customerId: req.params.id,
+          interactionId: interaction._id,
+          sentimentScore,
+          sentimentLabel,
+        });
+        await updateCustomerFromInteractions(req.params.id);
+        await checkSentimentAlert(req.params.id, req.user._id);
+      }
     } catch (aiError) {
-      // Flask not running yet — that's fine, continue without sentiment
       console.log('⚠️ AI service not available — interaction saved without sentiment');
     }
 
@@ -173,21 +185,3 @@ exports.deleteInteraction = async (req, res) => {
   }
 };
 
-// Helper — recalculate customer overall sentiment from all interactions
-const updateCustomerSentiment = async (customerId) => {
-  const interactions = await Interaction.find({
-    customerId,
-    sentimentScore: { $ne: null },
-  });
-
-  if (interactions.length === 0) return;
-
-  const avg =
-    interactions.reduce((sum, i) => sum + i.sentimentScore, 0) / interactions.length;
-
-  let overallSentiment = 'neutral';
-  if (avg >= 0.05) overallSentiment = 'positive';
-  if (avg <= -0.05) overallSentiment = 'negative';
-
-  await Customer.findByIdAndUpdate(customerId, { overallSentiment });
-};

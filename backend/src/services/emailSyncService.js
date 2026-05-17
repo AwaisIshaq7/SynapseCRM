@@ -1,4 +1,3 @@
-const axios = require('axios');
 const Customer = require('../models/Customer');
 const Interaction = require('../models/Interaction');
 const SentimentLog = require('../models/SentimentLog');
@@ -12,33 +11,7 @@ const companyFromEmail = (email) => {
   return name ? name.charAt(0).toUpperCase() + name.slice(1) : '';
 };
 
-const analyzeSentiment = async (text) => {
-  try {
-    const res = await axios.post(
-      `${process.env.AI_SERVICE_URL || 'http://localhost:8000'}/analyze`,
-      { text },
-      { timeout: 5000 }
-    );
-    return { score: res.data.score, label: res.data.sentiment };
-  } catch {
-    return { score: null, label: null };
-  }
-};
-
-const updateCustomerSentiment = async (customerId) => {
-  const interactions = await Interaction.find({
-    customerId,
-    sentimentScore: { $ne: null },
-  });
-  if (!interactions.length) return;
-
-  const avg = interactions.reduce((sum, i) => sum + i.sentimentScore, 0) / interactions.length;
-  let overallSentiment = 'neutral';
-  if (avg >= 0.05) overallSentiment = 'positive';
-  if (avg <= -0.05) overallSentiment = 'negative';
-
-  await Customer.findByIdAndUpdate(customerId, { overallSentiment });
-};
+const { analyzeEmailWithAI, updateCustomerFromInteractions } = require('./emailIntelligenceService');
 
 /**
  * Import inbox emails as customers + email interactions.
@@ -104,7 +77,12 @@ const syncInboxToDatabase = async ({
     }
 
     const content = `Subject: ${mail.subject}\n\n${mail.text || '(empty body)'}`;
-    const { score, label } = await analyzeSentiment(content);
+    const analysis = await analyzeEmailWithAI({
+      subject: mail.subject,
+      body: mail.text,
+      daysSinceContact: 0,
+      churnScore: customer.churnScore || 0,
+    });
 
     const interaction = await Interaction.create({
       customerId: customer._id,
@@ -115,18 +93,21 @@ const syncInboxToDatabase = async ({
       externalMessageId: mail.messageId,
       emailSubject: mail.subject,
       emailFrom: mail.fromEmail,
-      sentimentScore: score,
-      sentimentLabel: label,
+      sentimentScore: analysis?.score ?? null,
+      sentimentLabel: analysis?.sentiment ?? null,
+      priority: analysis?.priority ?? 'medium',
+      priorityScore: analysis?.priorityScore ?? 50,
+      emailInsight: analysis?.insight ?? '',
     });
 
-    if (score != null) {
+    if (analysis?.score != null) {
       await SentimentLog.create({
         customerId: customer._id,
         interactionId: interaction._id,
-        sentimentScore: score,
-        sentimentLabel: label,
+        sentimentScore: analysis.score,
+        sentimentLabel: analysis.sentiment,
       });
-      await updateCustomerSentiment(customer._id);
+      await updateCustomerFromInteractions(customer._id);
     }
 
     await Customer.findByIdAndUpdate(customer._id, {

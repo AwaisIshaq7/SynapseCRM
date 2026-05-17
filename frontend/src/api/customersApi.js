@@ -16,4 +16,13 @@ export const customersApi = {
 
   delete: (id) =>
     axiosInstance.delete(`/customers/${id}`),
+
+  analyzeEmails: (id) =>
+    axiosInstance.post(`/customers/${id}/analyze-emails`),
+
+  getSuggestedResponse: (id) =>
+    axiosInstance.get(`/customers/${id}/suggested-response`),
+
+  getPriorityInbox: () =>
+    axiosInstance.get('/customers/priority-inbox'),
 }

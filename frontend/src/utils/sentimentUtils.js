@@ -53,6 +53,38 @@ export function getChurnRiskClasses(churnScore) {
 /**
  * Returns Tailwind color class for customer status
  */
+export function getPriorityClasses(priority) {
+  switch (priority?.toLowerCase()) {
+    case 'urgent':
+      return {
+        bg: 'bg-red-100 dark:bg-red-900/40',
+        text: 'text-red-800 dark:text-red-300',
+        dot: 'bg-red-600',
+      }
+    case 'high':
+      return {
+        bg: 'bg-orange-100 dark:bg-orange-900/40',
+        text: 'text-orange-800 dark:text-orange-300',
+        dot: 'bg-orange-500',
+      }
+    case 'low':
+      return {
+        bg: 'bg-slate-100 dark:bg-slate-800',
+        text: 'text-slate-600 dark:text-slate-400',
+        dot: 'bg-slate-400',
+      }
+    case 'medium':
+    default:
+      return {
+        bg: 'bg-blue-100 dark:bg-blue-900/40',
+        text: 'text-blue-800 dark:text-blue-300',
+        dot: 'bg-blue-500',
+      }
+  }
+}
+
+export const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 }
+
 export function getStatusClasses(status) {
   switch (status) {
     case 'active':   return { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-400' }

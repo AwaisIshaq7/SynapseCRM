@@ -22,7 +22,7 @@ exports.getCustomers = async (req, res) => {
 
     const customers = await Customer.find(filter)
       .populate('assignedTo', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ priorityScore: -1, churnScore: -1, createdAt: -1 });
 
     res.status(200).json({ success: true, count: customers.length, data: customers });
   } catch (err) {

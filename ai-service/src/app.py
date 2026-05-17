@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from src.sentiment import analyze_sentiment
 from src.churn import calculate_churn_risk
+from src.email_intelligence import analyze_email, extract_email_body
 
 app = Flask(__name__)
 CORS(app)  # Allow requests from Node.js backend
@@ -46,6 +47,25 @@ def analyze():
 # POST /churn-risk
 # Body: { daysSinceLastContact, avgSentimentScore, interactionCount, interactionFrequency }
 # ------------------------------------
+@app.route('/analyze-email', methods=['POST'])
+def analyze_email_route():
+    try:
+        data = request.get_json() or {}
+        subject = data.get('subject', '')
+        body = data.get('body', '')
+        if not body and data.get('content'):
+            subject, body = extract_email_body(data.get('content', ''))
+        result = analyze_email(
+            subject=subject,
+            body=body,
+            days_since_contact=float(data.get('daysSinceContact', 0)),
+            churn_score=float(data.get('churnScore', 0)),
+        )
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/churn-risk', methods=['POST'])
 def churn_risk():
     try:

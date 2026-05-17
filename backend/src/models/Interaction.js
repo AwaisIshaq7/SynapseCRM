@@ -52,6 +52,21 @@ const interactionSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
     },
+    priority: {
+      type: String,
+      enum: ['urgent', 'high', 'medium', 'low'],
+      default: 'medium',
+    },
+    priorityScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 50,
+    },
+    emailInsight: {
+      type: String,
+      default: '',
+    },
   },
   { timestamps: true }
 );

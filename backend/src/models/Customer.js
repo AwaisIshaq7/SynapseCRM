@@ -45,6 +45,25 @@ const customerSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     },
+    priority: {
+      type: String,
+      enum: ['urgent', 'high', 'medium', 'low'],
+      default: 'medium',
+    },
+    priorityScore: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 50,
+    },
+    emailInsight: {
+      type: String,
+      default: '',
+    },
+    lastEmailSubject: {
+      type: String,
+      trim: true,
+    },
   },
   { timestamps: true }
 );

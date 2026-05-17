@@ -17,6 +17,7 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import AdminOverviewPanel from '../components/admin/AdminOverviewPanel'
 import Breadcrumbs from '../components/hci/Breadcrumbs'
 import RecentCustomers from '../components/hci/RecentCustomers'
+import PriorityInbox from '../components/PriorityInbox'
 import toast from 'react-hot-toast'
 import { timeAgo } from '../utils/formatters'
 import { getChurnRiskClasses } from '../utils/sentimentUtils'
@@ -752,6 +753,10 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mb-6 page-section-enter">
+        <PriorityInbox />
       </section>
 
       {isAdmin && (

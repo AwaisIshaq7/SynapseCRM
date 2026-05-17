@@ -8,6 +8,7 @@
     "dev": "nodemon src/server.js",
     "test:smtp": "node test-smtp.js",
     "sync:emails": "node src/utils/syncEmailsFromInbox.js",
+    "reanalyze:emails": "node src/utils/reanalyzeEmails.js",
     "test": "jest --testEnvironment node --forceExit --detectOpenHandles"
   },
   "jest": {
