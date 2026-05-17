@@ -19,6 +19,7 @@ import Breadcrumbs from '../components/hci/Breadcrumbs'
 import RecentCustomers from '../components/hci/RecentCustomers'
 import PriorityInbox from '../components/PriorityInbox'
 import SystemStabilityWidget from '../components/dashboard/SystemStabilityWidget'
+import ChurnAlertsPanel from '../components/dashboard/ChurnAlertsPanel'
 import { useNotifications } from '../hooks/useNotifications'
 import toast from 'react-hot-toast'
 import { timeAgo } from '../utils/formatters'
@@ -832,12 +833,18 @@ export default function DashboardPage() {
 
       {/* Render widgets in adaptive order */}
       {widgetOrder
-        .filter(w => widgets[w])
+        .filter((w) => widgets[w] && w !== 'alerts')
         .map((widgetName, index) => (
           <div key={widgetName} className="page-section-enter" style={{ animationDelay: `${0.04 + index * 0.05}s` }}>
             {widgets[widgetName]}
           </div>
         ))}
+
+      <ChurnAlertsPanel
+        alerts={summary?.churnAlerts}
+        loading={loading}
+        className="page-section-enter mt-2"
+      />
 
       {/* Styles for animations */}
       <style>{`
