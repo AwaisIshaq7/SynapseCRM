@@ -42,6 +42,9 @@
 
   body {
     @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
+    font-size: 1rem;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
     min-height: 100vh;
     background-image:
       linear-gradient(135deg, rgba(255, 255, 255, 0.82), rgba(248, 250, 252, 0.92)),
@@ -156,7 +159,16 @@
   }
 
   .label {
-    @apply mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-300;
+    @apply mb-1 block text-sm font-semibold text-slate-800 dark:text-slate-200;
+  }
+
+  /* WCAG-friendly muted text — higher contrast than gray-400/500 */
+  .text-muted {
+    @apply text-slate-700 dark:text-slate-300;
+  }
+
+  .text-readable {
+    @apply text-slate-900 dark:text-slate-100 leading-relaxed;
   }
 
   .surface {
@@ -533,5 +545,62 @@
   /* HCI #16 — diagonal balance in form headers */
   .form-header-diagonal {
     @apply flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200]
+           focus:rounded-xl focus:bg-brand-700 focus:px-4 focus:py-2.5 focus:text-white
+           focus:font-semibold focus:shadow-lg focus:outline-none focus:ring-4 focus:ring-white/40;
+  }
+
+  .skip-link:focus {
+    position: fixed;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  body::before {
+    animation: none !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  body {
+    @apply text-black dark:text-white;
+  }
+
+  .card {
+    @apply border-2 border-slate-800 dark:border-slate-200;
+  }
+
+  .input {
+    @apply border-2;
   }
 }

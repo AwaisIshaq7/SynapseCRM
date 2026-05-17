@@ -16,8 +16,10 @@ import {
   getEmailBody, getEmailSubject, getPreviewLine, getSenderLabel,
 } from '../utils/emailHelpers'
 import { formatDate, timeAgo } from '../utils/formatters'
+import { getSyncErrorMessage } from '../utils/syncErrorMessage'
 
 const MAILBOX_LIMIT = 150
+const AUTO_SYNC_MS = 15 * 1000
 
 export default function EmailInboxPage() {
   const [searchParams] = useSearchParams()
@@ -33,6 +35,8 @@ export default function EmailInboxPage() {
   const [sending, setSending] = useState(false)
   const [suggestLoading, setSuggestLoading] = useState(false)
   const [search, setSearch] = useState('')
+  const [syncError, setSyncError] = useState(null)
+  const [lastSyncOk, setLastSyncOk] = useState(null)
 
   const loadMailbox = useCallback(async () => {
     try {
@@ -75,23 +79,38 @@ export default function EmailInboxPage() {
     loadMailbox()
   }, [loadMailbox])
 
-  // Poll mailbox + light Gmail sync so new messages appear without manual refresh
-  useEffect(() => {
-    let syncing = false
-    const refresh = async () => {
-      if (syncing) return
-      syncing = true
-      try {
-        await emailApi.sync({ limit: 40, sinceDays: 14 })
-      } catch {
-        // IMAP may be unconfigured — still reload local mailbox
+  const runGmailSync = useCallback(async ({ silent = false } = {}) => {
+    try {
+      const res = await emailApi.sync({ limit: 40, sinceDays: 14 })
+      if (res.data.success) {
+        setSyncError(null)
+        setLastSyncOk(new Date())
+        if (!silent) toast.success(res.data.data.message)
+        return true
       }
-      await loadMailbox()
-      syncing = false
+    } catch (err) {
+      const message = getSyncErrorMessage(err)
+      setSyncError(message)
+      if (!silent) toast.error(message, { duration: 7000 })
+      return false
     }
-    const interval = setInterval(refresh, 90 * 1000)
+    return false
+  }, [])
+
+  // Auto-sync every 15s; reload mailbox even if Gmail sync fails
+  useEffect(() => {
+    let busy = false
+    const refresh = async () => {
+      if (busy) return
+      busy = true
+      await runGmailSync({ silent: true })
+      await loadMailbox()
+      busy = false
+    }
+    refresh()
+    const interval = setInterval(refresh, AUTO_SYNC_MS)
     return () => clearInterval(interval)
-  }, [loadMailbox])
+  }, [loadMailbox, runGmailSync])
 
   useEffect(() => {
     if (selected) {
@@ -108,14 +127,19 @@ export default function EmailInboxPage() {
 
   const handleSync = async () => {
     setSyncing(true)
+    setSyncError(null)
     try {
       const res = await emailApi.sync({ limit: MAILBOX_LIMIT, sinceDays: 180 })
       if (res.data.success) {
+        setLastSyncOk(new Date())
         toast.success(res.data.data.message)
         await loadMailbox()
       }
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Sync failed')
+      const message = getSyncErrorMessage(err)
+      setSyncError(message)
+      toast.error(message, { duration: 7000 })
+      await loadMailbox()
     } finally {
       setSyncing(false)
     }
@@ -196,9 +220,19 @@ export default function EmailInboxPage() {
             </span>
             Email inbox
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 ml-12 sm:ml-0">
-            Latest <strong>{MAILBOX_LIMIT}</strong> emails · auto-sync ~90s · Send replies via Gmail
+          <p className="text-sm text-muted mt-1.5 ml-12 sm:ml-0">
+            Latest <strong>{MAILBOX_LIMIT}</strong> emails · auto-sync every 15s · Send via Gmail
+            {lastSyncOk && (
+              <span className="block text-xs mt-0.5 opacity-90">
+                Last synced {timeAgo(lastSyncOk)}
+              </span>
+            )}
           </p>
+          {syncError && (
+            <p role="alert" className="mt-2 text-sm text-red-800 dark:text-red-100 bg-red-50 dark:bg-red-950/60 border border-red-300 dark:border-red-800 rounded-lg px-3 py-2 max-w-xl">
+              {syncError}
+            </p>
+          )}
         </div>
         <button
           type="button"
@@ -303,7 +337,7 @@ export default function EmailInboxPage() {
               <div className="flex-1 flex flex-col items-center justify-center text-slate-400 p-12">
                 <Inbox className="w-16 h-16 mb-4 opacity-30" />
                 <p className="text-base font-medium text-slate-500">Select an email to read</p>
-                <p className="text-sm mt-1">New messages sync automatically every ~90s</p>
+                <p className="text-sm mt-1">New messages sync automatically every 15 seconds</p>
               </div>
               {customerFilter && (
                 <form

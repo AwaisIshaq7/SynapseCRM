@@ -99,7 +99,7 @@ export default function CustomerListPage() {
       <div className="form-header-diagonal mb-6 rounded-2xl bg-linear-to-r from-blue-50/50 to-cyan-50/50 dark:from-slate-900/50 dark:to-slate-800/50 p-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Customers</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-muted mt-1">
             {loading ? 'Loading...' : `${customers.length} customer${customers.length !== 1 ? 's' : ''}`}
             <span className="hidden xl:inline text-gray-400"> · Select a row to preview (two-panel)</span>
           </p>
@@ -149,8 +149,8 @@ export default function CustomerListPage() {
         </div>
       </div>
 
-      <div className="xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] xl:gap-6 xl:items-start">
-        <div>
+      <div className="xl:grid xl:grid-cols-2 xl:gap-4 xl:items-start">
+        <section className="flex flex-col min-h-0 min-w-0 overflow-y-auto pr-1" aria-label="Customer list">
           {loading && <SkeletonLoader type="card" count={3} className="space-y-4 mb-6" />}
 
           {error && !loading && (
@@ -170,41 +170,40 @@ export default function CustomerListPage() {
 
           {!loading && !error && customers.length > 0 && (
             <div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-1 gap-4"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-1 gap-4 auto-rows-fr"
               role="list"
-              aria-label="Customer list"
             >
-              {customers.map((customer) => (
-                <div key={customer._id} role="listitem" className="relative group/item">
-                  <CustomerCard
-                    customer={customer}
-                    isSelected={selectedId === customer._id}
-                    onCardClick={handleCardClick}
-                  />
-                  {(isAdmin || (isSalesManager && customer.assignedTo?._id?.toString() === user?._id?.toString())) && (
-                    <button
-                      type="button"
-                      onClick={() => setDeleteTarget({ id: customer._id, name: customer.name })}
-                      className="absolute top-3 right-3 p-1.5 rounded-lg bg-red-100 text-red-600
-                                 opacity-0 group-hover/item:opacity-100 transition-opacity"
-                      aria-label={`Delete ${customer.name}`}
-                    >
-                      🗑
-                    </button>
-                  )}
-                </div>
-              ))}
+              {customers.map((customer) => {
+                const canDelete =
+                  isAdmin ||
+                  (isSalesManager &&
+                    customer.assignedTo?._id?.toString() === user?._id?.toString())
+                return (
+                  <div key={customer._id} role="listitem" className="h-full">
+                    <CustomerCard
+                      customer={customer}
+                      isSelected={selectedId === customer._id}
+                      onCardClick={handleCardClick}
+                      onDelete={
+                        canDelete
+                          ? (c) => setDeleteTarget({ id: c._id, name: c.name })
+                          : undefined
+                      }
+                    />
+                  </div>
+                )
+              })}
             </div>
           )}
-        </div>
+        </section>
 
-        <div className="hidden xl:block sticky top-4">
+        <aside className="hidden xl:block xl:sticky xl:top-4" aria-label="Customer preview">
           <CustomerPreviewPanel
             customer={previewCustomer}
             loading={previewLoading && !!selectedId}
             onClose={() => selectCustomer(null)}
           />
-        </div>
+        </aside>
       </div>
 
       <ConfirmModal
@@ -219,5 +218,6 @@ export default function CustomerListPage() {
     </div>
   )
 }
+
 
 

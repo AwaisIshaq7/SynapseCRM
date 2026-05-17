@@ -12,8 +12,8 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { getStatusClasses, getChurnRiskClasses } from '../utils/sentimentUtils'
-import { capitalize, formatDate, timeAgo, getInteractionIcon } from '../utils/formatters'
-import { getEmailSubject, getInteractionDisplayText } from '../utils/emailHelpers'
+import { capitalize, formatDate } from '../utils/formatters'
+import InteractionHistoryItem from '../components/InteractionHistoryItem'
 import { Bot, Mail } from 'lucide-react'
 import Breadcrumbs from '../components/hci/Breadcrumbs'
 import ConfirmModal from '../components/hci/ConfirmModal'
@@ -297,61 +297,19 @@ export default function CustomerDetailPage() {
             <p className="text-sm">No interactions yet. Log the first one above.</p>
           </div>
         ) : (
-          <ol className="divide-y divide-gray-100 dark:divide-gray-700/80" aria-label="Interaction history">
+          <ol className="space-y-2 list-none p-0 m-0" aria-label="Interaction history">
             {interactions.map((interaction) => (
-              <li
+              <InteractionHistoryItem
                 key={interaction._id}
-                className="flex gap-2.5 py-2.5 group first:pt-0"
-              >
-                <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-sm mt-0.5">
-                  {getInteractionIcon(interaction.type)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
-                        {interaction.type}
-                      </span>
-                      <SentimentBadge score={interaction.sentimentScore} label={interaction.sentimentLabel} size="xs" />
-                      {interaction.type === 'email' && interaction.priority && (
-                        <PriorityBadge priority={interaction.priority} size="xs" />
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-gray-400" title={formatDate(interaction.date)}>
-                        {timeAgo(interaction.date)}
-                      </span>
-                      {(isAdmin || (isSalesManager && (interaction.userId?._id?.toString?.() || interaction.userId?.toString()) === user?._id?.toString())) && (
-                        <button
-                          type="button"
-                          onClick={() => setDeleteInteraction(interaction._id)}
-                          className="p-1 rounded text-gray-400 hover:text-red-600 hover:bg-red-50
-                                     dark:hover:bg-red-900/30 opacity-0 group-hover:opacity-100 transition-opacity"
-                          aria-label="Delete interaction"
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {interaction.type === 'email' && (
-                    <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 truncate">
-                      📧 {getEmailSubject(interaction)}
-                    </p>
-                  )}
-                  <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300 leading-snug">
-                    {getInteractionDisplayText(interaction)}
-                  </p>
-                  {interaction.emailInsight && (
-                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded line-clamp-2">
-                      💡 {interaction.emailInsight}
-                    </p>
-                  )}
-                </div>
-              </li>
+                interaction={interaction}
+                canDelete={
+                  isAdmin ||
+                  (isSalesManager &&
+                    (interaction.userId?._id?.toString?.() || interaction.userId?.toString()) ===
+                      user?._id?.toString())
+                }
+                onDelete={setDeleteInteraction}
+              />
             ))}
           </ol>
         )}

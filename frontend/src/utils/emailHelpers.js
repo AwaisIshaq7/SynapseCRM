@@ -1,9 +1,23 @@
 const URL_PATTERN = /https?:\/\/[^\s\]\)<>"]+/gi
 const BRACKET_LINK = /\[(?:https?:\/\/|www\.)[^\]]*\]/gi
 
-const FOOTER_LINE = /^(?:questions\?|unsubscribe|terms of use|privacy|help center|this message was mailed|src:|netflix pte|©|\d{4}\s)/i
+const FOOTER_LINE =
+  /^(?:questions\?|unsubscribe|terms of use|privacy|help center|this message was mailed|src:|netflix pte|linkedin|view this email|email preferences|registered in|unlimited company|wilmington|all rights reserved|you are receiving|intended for|©|\d{4}\s|get the new linkedin)/i
 
-/** Strip tracking URLs, bracket links, and newsletter footers from plain-text email bodies. */
+const TAIL_CUT_PATTERNS = [
+  /linkedin\s+ireland/i,
+  /linkedin\s+corporation/i,
+  /this email was intended for/i,
+  /you are receiving .+ email/i,
+  /update your email preferences/i,
+  /unsubscribe[\s\S]*$/i,
+  /©\s*\d{4}/i,
+  /registered in[\s\S]*$/i,
+  /wilmington[\s\S]*$/i,
+  /get the new linkedin app/i,
+]
+
+/** Strip tracking URLs, footers, and legal boilerplate from plain-text email bodies. */
 export function cleanEmailBody(text) {
   if (!text?.trim()) return ''
 
@@ -12,6 +26,13 @@ export function cleanEmailBody(text) {
     .replace(URL_PATTERN, '')
     .replace(/<\s*https?:[^>]+>/gi, '')
 
+  for (const re of TAIL_CUT_PATTERNS) {
+    const match = cleaned.match(re)
+    if (match && match.index > 60) {
+      cleaned = cleaned.slice(0, match.index).trim()
+    }
+  }
+
   const lines = cleaned
     .split('\n')
     .map((line) => line.trim())
@@ -19,6 +40,7 @@ export function cleanEmailBody(text) {
       if (!line) return false
       if (FOOTER_LINE.test(line)) return false
       if (/^[\s|·•\-_=]+$/.test(line)) return false
+      if (line.length < 3) return false
       return true
     })
 
@@ -63,20 +85,47 @@ export function getEmailSubject(interaction) {
   return m?.[1]?.trim() || '(no subject)'
 }
 
-/** Compact single-block text for profile timeline (no extra line gaps). */
-export function getInteractionDisplayText(interaction) {
+/** Normalize to readable paragraphs (sentence breaks). */
+export function formatReadableText(text) {
+  if (!text?.trim()) return ''
+  return text
+    .replace(/\n+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/([.!?])\s+(?=[A-Z])/g, '$1\n\n')
+    .trim()
+}
+
+export function truncateText(text, max = 280) {
+  const flat = (text || '').replace(/\s+/g, ' ').trim()
+  if (flat.length <= max) return flat
+  const slice = flat.slice(0, max)
+  const lastStop = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('! '), slice.lastIndexOf('? '))
+  if (lastStop > 100) return `${slice.slice(0, lastStop + 1).trim()}…`
+  return `${slice.trim()}…`
+}
+
+/** Full cleaned body for expand view. */
+export function getInteractionFullText(interaction) {
   if (!interaction) return ''
-  if (interaction.type !== 'email') return (interaction.content || '').trim()
+  if (interaction.type !== 'email') return formatReadableText((interaction.content || '').trim())
   const body = getEmailBody(interaction)
-  if (!body) return '(Marketing email — no readable body)'
-  return body.replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ').trim()
+  if (!body) return ''
+  return formatReadableText(body)
+}
+
+/** Short preview for timeline cards. */
+export function getInteractionDisplayText(interaction, maxLength = 280) {
+  const full = getInteractionFullText(interaction)
+  if (!full) {
+    return interaction?.type === 'email' ? '(Marketing email — preview unavailable)' : ''
+  }
+  return truncateText(full, maxLength)
 }
 
 export function getPreviewLine(interaction, max = 100) {
   const body = getEmailBody(interaction)
   if (!body) return '(No message preview)'
-  const line = body.replace(/\s+/g, ' ').trim()
-  return line.length > max ? `${line.slice(0, max)}…` : line
+  return truncateText(body, max)
 }
 
 export function getSenderLabel(interaction) {
