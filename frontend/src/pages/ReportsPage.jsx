@@ -227,9 +227,10 @@ export default function ReportsPage() {
               <select
                 value={days}
                 onChange={e => setDays(Number(e.target.value))}
-                className="input w-32 text-sm"
+                className="input w-36 text-sm"
                 aria-label="Select time range"
               >
+                <option value={3}>Last 3 days</option>
                 <option value={7}>Last 7 days</option>
                 <option value={14}>Last 14 days</option>
                 <option value={30}>Last 30 days</option>

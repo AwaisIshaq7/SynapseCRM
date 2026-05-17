@@ -12,19 +12,17 @@ export function cleanEmailBody(text) {
     .replace(URL_PATTERN, '')
     .replace(/<\s*https?:[^>]+>/gi, '')
 
-  const lines = cleaned.split('\n').filter((line) => {
-    const trimmed = line.trim()
-    if (!trimmed) return true
-    if (FOOTER_LINE.test(trimmed)) return false
-    if (/^[\s|·•\-_=]+$/.test(trimmed)) return false
-    return true
-  })
+  const lines = cleaned
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (!line) return false
+      if (FOOTER_LINE.test(line)) return false
+      if (/^[\s|·•\-_=]+$/.test(line)) return false
+      return true
+    })
 
-  cleaned = lines
-    .join('\n')
-    .replace(/[^\S\n]{2,}/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
+  cleaned = lines.join('\n').replace(/[^\S\n]{2,}/g, ' ').trim()
 
   return cleaned
 }
@@ -63,6 +61,15 @@ export function getEmailSubject(interaction) {
   if (interaction.emailSubject?.trim()) return interaction.emailSubject.trim()
   const m = (interaction.content || '').match(/^Subject:\s*(.+?)(?:\n\n|\n|$)/i)
   return m?.[1]?.trim() || '(no subject)'
+}
+
+/** Compact single-block text for profile timeline (no extra line gaps). */
+export function getInteractionDisplayText(interaction) {
+  if (!interaction) return ''
+  if (interaction.type !== 'email') return (interaction.content || '').trim()
+  const body = getEmailBody(interaction)
+  if (!body) return '(Marketing email — no readable body)'
+  return body.replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ').trim()
 }
 
 export function getPreviewLine(interaction, max = 100) {

@@ -13,7 +13,7 @@ import toast from 'react-hot-toast'
 import clsx from 'clsx'
 import { getStatusClasses, getChurnRiskClasses } from '../utils/sentimentUtils'
 import { capitalize, formatDate, timeAgo, getInteractionIcon } from '../utils/formatters'
-import { getEmailBody, getEmailSubject } from '../utils/emailHelpers'
+import { getEmailSubject, getInteractionDisplayText } from '../utils/emailHelpers'
 import { Bot, Mail } from 'lucide-react'
 import Breadcrumbs from '../components/hci/Breadcrumbs'
 import ConfirmModal from '../components/hci/ConfirmModal'
@@ -132,7 +132,7 @@ export default function CustomerDetailPage() {
   const churnStyles  = getChurnRiskClasses(customer.churnScore)
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-4">
       <Breadcrumbs
         items={[
           { label: 'Dashboard', to: '/dashboard' },
@@ -217,8 +217,8 @@ export default function CustomerDetailPage() {
       />
 
       {/* Interactions section */}
-      <div className="card">
-        <div className="flex items-center justify-between mb-4">
+      <div className="card !p-4">
+        <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
             Interaction History
             <span className="ml-2 text-sm font-normal text-gray-500">({interactions.length})</span>
@@ -236,13 +236,13 @@ export default function CustomerDetailPage() {
         {showAddForm && (
           <form
             onSubmit={handleAddInteraction}
-            className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 space-y-3 animate-slide-in"
+            className="mb-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 space-y-2 animate-slide-in"
             aria-label="Add new interaction"
           >
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               {/* Type */}
-              <div className="w-40">
-                <label htmlFor="int-type" className="label">Type</label>
+              <div className="w-36">
+                <label htmlFor="int-type" className="label !mb-0.5 text-xs">Type</label>
                 <select
                   id="int-type"
                   value={newInteraction.type}
@@ -256,7 +256,7 @@ export default function CustomerDetailPage() {
               </div>
               {/* Date */}
               <div className="flex-1">
-                <label htmlFor="int-date" className="label">Date</label>
+                <label htmlFor="int-date" className="label !mb-0.5 text-xs">Date</label>
                 <input
                   id="int-date"
                   type="date"
@@ -269,13 +269,13 @@ export default function CustomerDetailPage() {
             </div>
             {/* Content */}
             <div>
-              <label htmlFor="int-content" className="label">Notes / Summary</label>
+              <label htmlFor="int-content" className="label !mb-0.5 text-xs">Notes / Summary</label>
               <textarea
                 id="int-content"
                 value={newInteraction.content}
                 onChange={e => setNewInteraction(p => ({ ...p, content: e.target.value }))}
-                className="input resize-none"
-                rows={3}
+                className="input resize-none !py-2"
+                rows={2}
                 placeholder="Describe what was discussed, any concerns, next steps..."
                 required
               />
@@ -292,28 +292,21 @@ export default function CustomerDetailPage() {
         {interactionsLoad ? (
           <div className="flex justify-center py-8"><LoadingSpinner /></div>
         ) : interactions.length === 0 ? (
-          <div className="text-center py-12 text-gray-400 dark:text-gray-500">
-            <p className="text-3xl mb-2">💬</p>
+          <div className="text-center py-6 text-gray-400 dark:text-gray-500">
+            <p className="text-2xl mb-1">💬</p>
             <p className="text-sm">No interactions yet. Log the first one above.</p>
           </div>
         ) : (
-          <ol className="space-y-3" aria-label="Interaction history">
-            {interactions.map((interaction, idx) => (
+          <ol className="divide-y divide-gray-100 dark:divide-gray-700/80" aria-label="Interaction history">
+            {interactions.map((interaction) => (
               <li
                 key={interaction._id}
-                className="flex gap-3 group"
+                className="flex gap-2.5 py-2.5 group first:pt-0"
               >
-                {/* Timeline dot */}
-                <div className="flex flex-col items-center">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-sm">
-                    {getInteractionIcon(interaction.type)}
-                  </div>
-                  {idx < interactions.length - 1 && (
-                    <div className="w-px flex-1 bg-gray-200 dark:bg-gray-700 mt-1" aria-hidden="true" />
-                  )}
+                <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0 text-sm mt-0.5">
+                  {getInteractionIcon(interaction.type)}
                 </div>
-                {/* Content */}
-                <div className="flex-1 pb-4">
+                <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-sm font-medium text-gray-900 dark:text-white capitalize">
@@ -345,23 +338,16 @@ export default function CustomerDetailPage() {
                     </div>
                   </div>
                   {interaction.type === 'email' && (
-                    <p className="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+                    <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 truncate">
                       📧 {getEmailSubject(interaction)}
                     </p>
                   )}
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                    {interaction.type === 'email'
-                      ? (getEmailBody(interaction) || '(Marketing email — no readable body)')
-                      : interaction.content}
+                  <p className="mt-0.5 text-sm text-gray-600 dark:text-gray-300 leading-snug">
+                    {getInteractionDisplayText(interaction)}
                   </p>
                   {interaction.emailInsight && (
-                    <p className="mt-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+                    <p className="mt-1 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-0.5 rounded line-clamp-2">
                       💡 {interaction.emailInsight}
-                    </p>
-                  )}
-                  {interaction.sentimentScore !== null && interaction.sentimentScore !== undefined && (
-                    <p className="mt-1 text-xs text-gray-400">
-                      Sentiment score: {interaction.sentimentScore.toFixed(2)}
                     </p>
                   )}
                 </div>
